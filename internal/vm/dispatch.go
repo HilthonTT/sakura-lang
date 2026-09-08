@@ -420,6 +420,10 @@ func (v *VM) dispatch(f *CallFrame, ins *bytecode.Instruction) {
 		} else {
 			v.pop()
 		}
+	case bytecode.JumpIfNil:
+		if v.Stack[len(v.Stack)-1] == nil {
+			f.IP = int(ins.A)
+		}
 	case bytecode.JumpIfTrueKeep:
 		x := v.Stack[len(v.Stack)-1]
 		if IsTruthy(x) {

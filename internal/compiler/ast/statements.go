@@ -422,6 +422,63 @@ func (ss *StructStatement) String() string {
 	return out.String()
 }
 
+type DestructureBind struct {
+	Key     string
+	Index   int
+	Bind    string
+	Rest    bool
+	Default Expression
+	Type    TypeNode
+}
+
+func (b DestructureBind) String() string {
+	var out bytes.Buffer
+	if b.Rest {
+		out.WriteString("...")
+		out.WriteString(b.Bind)
+		return out.String()
+	}
+	if b.Key != "" {
+		out.WriteString(b.Key)
+		if b.Bind != b.Key {
+			out.WriteString(" = ")
+			out.WriteString(b.Bind)
+		}
+	} else {
+		out.WriteString(b.Bind)
+	}
+	if b.Type != nil {
+		out.WriteString(": ")
+		out.WriteString(b.Type.String())
+	}
+	if b.Default != nil {
+		out.WriteString(" or ")
+		out.WriteString(b.Default.String())
+	}
+	return out.String()
+}
+
+type LocalDestructureStatement struct {
+	BaseNode
+	IsArray bool
+	Binds   []DestructureBind
+	Value   Expression
+}
+
+func (*LocalDestructureStatement) statementNode()          {}
+func (ds *LocalDestructureStatement) TokenLiteral() string { return ds.Token.Literal }
+func (ds *LocalDestructureStatement) String() string {
+	open, close := "{", "}"
+	if ds.IsArray {
+		open, close = "[", "]"
+	}
+	parts := make([]string, len(ds.Binds))
+	for i, b := range ds.Binds {
+		parts[i] = b.String()
+	}
+	return "local " + open + " " + strings.Join(parts, ", ") + " " + close + " = " + ds.Value.String()
+}
+
 type TryCatchStatement struct {
 	BaseNode
 	Try      *Block

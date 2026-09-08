@@ -55,6 +55,8 @@ func (e *emitter) statement(stmt ast.Statement, opts Options) Doc {
 		return e.enumStmt(s, opts)
 	case *ast.StructStatement:
 		return e.structStmt(s, opts)
+	case *ast.LocalDestructureStatement:
+		return e.localDestructure(s, opts)
 	}
 	return text(stmt.String())
 }
@@ -305,6 +307,35 @@ func (e *emitter) structStmt(s *ast.StructStatement, opts Options) Doc {
 		text("struct "), text(s.Name.Name), e.typeParamList(s.TypeParams, opts), text(" {"),
 		nest(opts.indent(), concat(hardLine(), join(concat(text(","), hardLine()), fields...), text(","))),
 		hardLine(), text("}"))
+}
+
+func (e *emitter) localDestructure(s *ast.LocalDestructureStatement, opts Options) Doc {
+	open, closer := "{", "}"
+	if s.IsArray {
+		open, closer = "[", "]"
+	}
+	parts := make([]Doc, len(s.Binds))
+	for i, b := range s.Binds {
+		var d Doc
+		switch {
+		case b.Rest:
+			d = concat(text("..."), text(b.Bind))
+		case b.Key != "" && b.Key != b.Bind:
+			d = concat(text(b.Key), text(" = "), text(b.Bind))
+		default:
+			d = text(b.Bind)
+		}
+		if b.Type != nil {
+			d = concat(d, text(": "), e.typeNode(b.Type, opts))
+		}
+		if b.Default != nil {
+			d = concat(d, text(" or "), e.expr(b.Default, opts))
+		}
+		parts[i] = d
+	}
+	head := concat(text("local "), text(open), text(" "),
+		join(text(", "), parts...), text(" "), text(closer))
+	return e.assignTail(head, []ast.Expression{s.Value}, opts)
 }
 
 func (e *emitter) enumStmt(s *ast.EnumStatement, opts Options) Doc {

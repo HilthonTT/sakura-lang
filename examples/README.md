@@ -36,6 +36,7 @@ A few need a little more:
 | `51_default_params.lsc` | default parameters, why `false` doesn't trigger them, earlier-param references |
 | `52_attributes.lsc` | `<const>` / `<close>` and what the always-on `constcheck` pass rejects |
 | `55_try_catch.lsc` | `try` / `catch` / `throw` — a real protected region, not a `pcall` desugar |
+| `60_destructuring.lsc` | `local { a, b } = t` / `local [ x, y ] = t`, renames, defaults, rest bindings, and `{ ...a, ...b }` spread |
 
 ## Types
 

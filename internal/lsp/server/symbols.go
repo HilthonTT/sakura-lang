@@ -40,6 +40,10 @@ func documentSymbols(uri, src string) []protocol.SymbolInformationOrDocumentSymb
 			for _, n := range s.Names {
 				emit(n.Name, protocol.SymbolKindVariable, s.Line())
 			}
+		case *ast.LocalDestructureStatement:
+			for _, b := range s.Binds {
+				emit(b.Bind, protocol.SymbolKindVariable, s.Line())
+			}
 		}
 	}
 	return out

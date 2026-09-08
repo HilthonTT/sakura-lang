@@ -100,6 +100,17 @@ defer, try, catch and throw are hard keywords.`,
 		Entries: []Entry{
 			{Name: "local", Kind: EntryKeyword, Signature: "local x [, y] = expr [, expr]",
 				Summary: "Declares block-scoped variables. Attributes are supported: `local x <const> = 1` and `local h <close> = f()`."},
+			{Name: "destructuring", Kind: EntryKeyword, Signature: "local { a, b } = t  |  local [ first, second ] = t",
+				Summary: "Binds several locals from one table in a single local statement.",
+				Detail: `The braced form reads named fields; the bracketed form reads positions
+1..n. A field may be renamed ({ host = h } binds t.host to h), typed
+({ port: number }), given a fallback for nil ({ timeout or 30 }), and the
+last entry may be a rest binding ({ a, ...others }) that collects
+everything not named before it into a fresh table. The checker resolves
+each name against the source table's type, so a field the type does not
+declare is a compile error. See examples/60_destructuring.lsc.`},
+			{Name: "spread", Kind: EntryKeyword, Signature: "{ ...a, ...b, extra }",
+				Summary: "Merges other tables into a table constructor. Array entries are appended in order and named keys are copied, with later entries winning. See examples/60_destructuring.lsc."},
 			{Name: "interface", Kind: EntryKeyword, Signature: "interface Name { field: T }",
 				Summary: "Declares a named structural type. Equivalent to a type alias whose target is a table, kept as its own form so the formatter round-trips it, and intended for use as a generic constraint. A contextual keyword. See examples/61_generic_constraints.lsc."},
 			{Name: "function", Kind: EntryKeyword, Signature: "function f(a: T, b: T = default): R ... end",

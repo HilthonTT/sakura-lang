@@ -18,6 +18,8 @@ func (c *checker) walkStatement(s ast.Statement) {
 	switch n := s.(type) {
 	case *ast.LocalStatement:
 		c.walkLocalStatement(n)
+	case *ast.LocalDestructureStatement:
+		c.walkLocalDestructure(n)
 	case *ast.LocalFunctionStatement:
 		c.walkLocalFunctionStatement(n)
 	case *ast.FunctionDeclaration:
@@ -110,6 +112,60 @@ func (c *checker) walkLocalStatement(s *ast.LocalStatement) {
 		}
 		c.env.define(name.Name, bound)
 	}
+}
+
+func (c *checker) walkLocalDestructure(s *ast.LocalDestructureStatement) {
+	source := c.typeOfExpression(s.Value)
+	source = boundOf(source)
+	if source.Kind != KindAny && source.Kind != KindTable && source.Kind != KindUnknown {
+		c.errf(s.Line(), "destructure-non-table",
+			"cannot destructure a value of type %q", source.String())
+		source = anyT
+	}
+	for _, b := range s.Binds {
+		bound := c.destructuredFieldType(s, source, b)
+		if b.Type != nil {
+			declared := c.resolveAST(b.Type)
+			if !assignable(bound, declared) {
+				c.errAssign(s.Line(), bound, declared)
+			}
+			bound = declared
+		}
+		if b.Default != nil {
+			got := c.typeOfExpression(b.Default)
+			bound = NewUnion(removeKind(bound, KindNil), got)
+		}
+		c.env.define(b.Bind, widen(bound))
+	}
+}
+
+func (c *checker) destructuredFieldType(s *ast.LocalDestructureStatement, source *Type, b ast.DestructureBind) *Type {
+	if b.Rest {
+		if s.IsArray && source.Kind == KindTable && source.Table != nil && source.Table.Indexer != nil {
+			return NewTable(nil, source.Table.Indexer)
+		}
+		return anyT
+	}
+	if source.Kind != KindTable || source.Table == nil {
+		return anyT
+	}
+	if s.IsArray {
+		if source.Table.Indexer != nil && assignable(numberT, source.Table.Indexer.Key) {
+			return Optional(source.Table.Indexer.Value)
+		}
+		return anyT
+	}
+	for _, f := range source.Table.Fields {
+		if f.Key == b.Key {
+			return f.Type
+		}
+	}
+	if source.Table.Indexer != nil && assignable(stringT, source.Table.Indexer.Key) {
+		return source.Table.Indexer.Value
+	}
+	c.errf(s.Line(), "missing-field",
+		"type %q has no field %q", source.String(), b.Key)
+	return anyT
 }
 
 func (c *checker) walkLocalFunctionStatement(s *ast.LocalFunctionStatement) {

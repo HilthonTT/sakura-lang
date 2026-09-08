@@ -183,6 +183,10 @@ func (p *Parser) parseLocalStatement() ast.Statement {
 		return p.parseLocalFunctionStatement(tok)
 	}
 
+	if p.curTokenIs(token.LBrace) || p.curTokenIs(token.LBracket) {
+		return p.parseLocalDestructure(tok)
+	}
+
 	stmt := &ast.LocalStatement{BaseNode: baseAt(tok)}
 	for {
 		if !p.expectCur(token.Ident) {

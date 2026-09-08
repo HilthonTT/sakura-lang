@@ -550,6 +550,14 @@ func (p *Parser) parseTableConstructor() ast.Expression {
 }
 
 func (p *Parser) parseTableField() (ast.TableField, bool) {
+	if p.curTokenIs(token.Vararg) && p.peekStartsExpression() {
+		p.nextToken()
+		val := p.parseExpression()
+		if val == nil {
+			return ast.TableField{}, false
+		}
+		return ast.TableField{Value: val, IsSpread: true}, true
+	}
 	if p.curTokenIs(token.LBracket) {
 		p.nextToken()
 		key := p.parseExpression()

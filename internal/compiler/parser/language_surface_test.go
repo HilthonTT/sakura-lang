@@ -5,6 +5,71 @@ import (
 
 	"github.com/hilthontt/luascript/internal/compiler/ast"
 )
+func TestParseNamedDestructure(t *testing.T) {
+	ds := parseExpect1(t, "local { host, port } = cfg").(*ast.LocalDestructureStatement)
+	if ds.IsArray {
+		t.Fatalf("IsArray = true, want false")
+	}
+	if len(ds.Binds) != 2 {
+		t.Fatalf("binds = %d, want 2", len(ds.Binds))
+	}
+	if ds.Binds[0].Key != "host" || ds.Binds[0].Bind != "host" {
+		t.Errorf("bind 0 = %+v, want key/bind host", ds.Binds[0])
+	}
+}
+func TestParseDestructureRenameDefaultAndRest(t *testing.T) {
+	ds := parseExpect1(t, "local { host = h, timeout or 30, ...others } = cfg").(*ast.LocalDestructureStatement)
+	if len(ds.Binds) != 3 {
+		t.Fatalf("binds = %d, want 3", len(ds.Binds))
+	}
+	if ds.Binds[0].Key != "host" || ds.Binds[0].Bind != "h" {
+		t.Errorf("rename = %+v, want host -> h", ds.Binds[0])
+	}
+	if ds.Binds[1].Default == nil {
+		t.Errorf("bind 1 has no default")
+	}
+	if !ds.Binds[2].Rest || ds.Binds[2].Bind != "others" {
+		t.Errorf("rest = %+v, want ...others", ds.Binds[2])
+	}
+}
+func TestParsePositionalDestructure(t *testing.T) {
+	ds := parseExpect1(t, "local [ a, b, ...tail ] = list").(*ast.LocalDestructureStatement)
+	if !ds.IsArray {
+		t.Fatalf("IsArray = false, want true")
+	}
+	if ds.Binds[0].Index != 1 || ds.Binds[1].Index != 2 {
+		t.Errorf("indices = %d, %d, want 1, 2", ds.Binds[0].Index, ds.Binds[1].Index)
+	}
+	if !ds.Binds[2].Rest || ds.Binds[2].Index != 3 {
+		t.Errorf("rest = %+v, want index 3", ds.Binds[2])
+	}
+}
+func TestParseDestructureErrors(t *testing.T) {
+	cases := []string{
+		"local { ...rest, a } = t",
+		"local { } = t",
+		"local { a, a } = t",
+		"local { a } t",
+	}
+	for _, src := range cases {
+		parseError(t, src)
+	}
+}
+func TestParseTableSpread(t *testing.T) {
+	ls := parseExpect1(t, "local m = { ...a, x = 1, ...b }").(*ast.LocalStatement)
+	tc := ls.Values[0].(*ast.TableConstructor)
+	if !tc.Fields[0].IsSpread || tc.Fields[1].IsSpread || !tc.Fields[2].IsSpread {
+		t.Errorf("spread flags = %v %v %v, want true false true",
+			tc.Fields[0].IsSpread, tc.Fields[1].IsSpread, tc.Fields[2].IsSpread)
+	}
+}
+func TestParseVarargInTableIsNotSpread(t *testing.T) {
+	ls := parseExpect1(t, "local m = { ... }").(*ast.LocalStatement)
+	tc := ls.Values[0].(*ast.TableConstructor)
+	if tc.Fields[0].IsSpread {
+		t.Errorf("`{ ... }` parsed as a spread, want a vararg expansion")
+	}
+}
 func TestParseInterfaceStatement(t *testing.T) {
 	ta := parseExpect1(t, "interface Named { name: string }").(*ast.TypeAliasStatement)
 	if !ta.IsInterface || ta.Name != "Named" {

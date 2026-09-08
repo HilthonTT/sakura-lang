@@ -232,6 +232,10 @@ func (g *Generator) compileParamDefaults(is *InstructionSet, params []ast.TypedP
 }
 
 func (g *Generator) compileTableConstructor(is *InstructionSet, t *ast.TableConstructor) {
+	if tableHasSpread(t) {
+		g.compileSpreadTable(is, t)
+		return
+	}
 	arrayHint, hashHint := 0, 0
 	for _, f := range t.Fields {
 		if f.Key == nil {

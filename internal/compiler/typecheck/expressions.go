@@ -82,6 +82,14 @@ func (c *checker) typeOfTableConstructor(t *ast.TableConstructor) *Type {
 		if f.Key != nil {
 			c.walkExpressionDiscard(f.Key)
 		}
+		if f.IsSpread {
+			spread := boundOf(c.typeOfExpression(f.Value))
+			if spread.Kind != KindAny && spread.Kind != KindTable && spread.Kind != KindUnknown {
+				c.errf(f.Value.Line(), "spread-non-table",
+					"cannot spread a value of type %q into a table", spread.String())
+			}
+			continue
+		}
 		c.walkExpressionDiscard(f.Value)
 	}
 	return anyT

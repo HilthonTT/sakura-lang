@@ -93,6 +93,16 @@ func (p lintPass) lintStmt(s ast.Statement, sc *scope, rep *Report) {
 		for _, ln := range n.Names {
 			p.defineLocal(sc, ln.Name, n.Line(), rep)
 		}
+	case *ast.LocalDestructureStatement:
+		p.lintExpr(n.Value, sc, rep)
+		for _, b := range n.Binds {
+			if b.Default != nil {
+				p.lintExpr(b.Default, sc, rep)
+			}
+		}
+		for _, b := range n.Binds {
+			p.defineLocal(sc, b.Bind, n.Line(), rep)
+		}
 	case *ast.LocalFunctionStatement:
 		p.defineLocal(sc, n.Name, n.Line(), rep)
 		p.lintFunc(n.Func, sc, rep)

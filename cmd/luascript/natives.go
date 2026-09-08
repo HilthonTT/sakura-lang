@@ -28,6 +28,7 @@ import (
 	"github.com/hilthontt/luascript/internal/native/stdlib/sort"
 	"github.com/hilthontt/luascript/internal/native/stdlib/std"
 	"github.com/hilthontt/luascript/internal/native/stdlib/structrt"
+	"github.com/hilthontt/luascript/internal/native/stdlib/tablert"
 	"github.com/hilthontt/luascript/internal/native/stdlib/testx"
 	"github.com/hilthontt/luascript/internal/native/stdlib/timex"
 	"github.com/hilthontt/luascript/internal/native/stdlib/ui"
@@ -71,6 +72,7 @@ var nativeRegistrars = []func(*vm.VM){
 	plugin.RegisterPluginPreload,
 	enumrt.RegisterEnumRT,
 	structrt.RegisterStructRT,
+	tablert.RegisterTableRT,
 	promoteStandardGlobals,
 }
 

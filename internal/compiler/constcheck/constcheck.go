@@ -83,6 +83,14 @@ func (c *checker) stmt(s ast.Statement) {
 		for _, ln := range n.Names {
 			c.define(ln.Name, ln.Attrib)
 		}
+	case *ast.LocalDestructureStatement:
+		c.expr(n.Value)
+		for _, b := range n.Binds {
+			if b.Default != nil {
+				c.expr(b.Default)
+			}
+			c.define(b.Bind, "")
+		}
 	case *ast.LocalFunctionStatement:
 		c.define(n.Name, "")
 		c.function(n.Func)

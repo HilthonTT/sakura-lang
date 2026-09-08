@@ -55,6 +55,8 @@ func (g *Generator) compileStatement(is *InstructionSet, stmt ast.Statement) {
 		g.compileAssign(is, s)
 	case *ast.LocalStatement:
 		g.compileLocal(is, s)
+	case *ast.LocalDestructureStatement:
+		g.compileLocalDestructure(is, s)
 	case *ast.LocalFunctionStatement:
 		g.compileLocalFunction(is, s)
 	case *ast.FunctionDeclaration:

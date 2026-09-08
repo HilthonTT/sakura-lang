@@ -146,6 +146,7 @@ type TableField struct {
 	Key         Expression
 	Value       Expression
 	IsBracketed bool
+	IsSpread    bool
 }
 
 type TableConstructor struct {
@@ -165,6 +166,9 @@ func (tc *TableConstructor) String() string {
 			out.WriteString(" ")
 		}
 		switch {
+		case f.IsSpread:
+			out.WriteString("...")
+			out.WriteString(f.Value.String())
 		case f.Key == nil:
 			out.WriteString(f.Value.String())
 		case f.IsBracketed:

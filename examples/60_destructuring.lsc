@@ -1,0 +1,75 @@
+-- Destructuring and spread: two ways to move fields between tables without
+-- writing the same name three times.
+--
+--   local { a, b } = t   reads named fields
+--   local [ x, y ] = t   reads positions 1..n
+--   { ...a, ...b }       merges tables into a constructor
+
+local config = {
+    host = "localhost",
+    port = 8080,
+    debug = true,
+    retries = 3,
+}
+
+print("=== named destructuring ===")
+
+local { host, port } = config
+print("host, port :", host, port)
+
+-- A field can be bound under a different local name: `field = localName`.
+local { host = address, port = listenPort } = config
+print("renamed    :", address, listenPort)
+
+-- A field the source may not carry can take a fallback with `or`. The
+-- fallback applies only to nil, never to false.
+local { host, timeout or 30 } = config
+print("timeout    :", timeout)
+
+-- The last entry may be a rest binding. It collects every key that was not
+-- named ahead of it into a fresh table.
+local { host, ...others } = config
+print("others.port:", others.port, "others.host:", others.host)
+print()
+
+print("=== positional destructuring ===")
+
+local point = { 3, 4, 5 }
+local [ x, y, z ] = point
+print("x, y, z    :", x, y, z)
+
+-- A positional rest collects the remaining array entries, renumbered from 1.
+local [ first, ...tail ] = point
+print("first, tail:", first, tail[1], tail[2])
+print()
+
+print("=== spread ===")
+
+local defaults = { retries = 1, timeout = 5 }
+local overrides = { timeout = 60 }
+
+-- Later entries win, so this reads as "defaults, then overrides on top".
+local merged = { ...defaults, ...overrides, verbose = true }
+print("retries    :", merged.retries)
+print("timeout    :", merged.timeout)
+print("verbose    :", merged.verbose)
+
+-- Array parts are appended in the order they appear.
+local head = { 1, 2 }
+local rest = { 3, 4 }
+local all = { 0, ...head, ...rest, 5 }
+print("all        :", #all, all[1], all[3], all[6])
+print()
+
+print("=== typed destructuring ===")
+
+-- The checker resolves each name against the source table's type, so a
+-- misspelled field is a compile error rather than a nil at runtime.
+type Server = { host: string, port: number }
+
+local function describe(s: Server): string
+    local { host = name, port = listen } = s
+    return name .. ":" .. listen
+end
+
+print("describe   :", describe({ host = "example.com", port = 443 }))

@@ -28,6 +28,13 @@ func foldStmt(s ast.Statement) {
 		foldExprSlice(n.Values)
 	case *ast.LocalStatement:
 		foldExprSlice(n.Values)
+	case *ast.LocalDestructureStatement:
+		n.Value = foldExpr(n.Value)
+		for i := range n.Binds {
+			if n.Binds[i].Default != nil {
+				n.Binds[i].Default = foldExpr(n.Binds[i].Default)
+			}
+		}
 	case *ast.LocalFunctionStatement:
 		foldFunc(n.Func)
 	case *ast.FunctionDeclaration:

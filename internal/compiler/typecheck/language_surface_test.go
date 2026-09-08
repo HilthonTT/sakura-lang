@@ -1,6 +1,51 @@
 package typecheck
 
 import "testing"
+func TestDestructureResolvesFieldTypes(t *testing.T) {
+	expectOK(t, `
+		type Server = { host: string, port: number }
+		local function f(s: Server): string
+			local { host, port } = s
+			return host .. port
+		end`)
+}
+func TestDestructureRejectsUnknownField(t *testing.T) {
+	expectErrContains(t, `
+		local s: { host: string } = { host = "h" }
+		local { missing } = s`,
+		`has no field "missing"`)
+}
+func TestDestructureRejectsNonTable(t *testing.T) {
+	expectErrContains(t, `
+		local n: number = 1
+		local { x } = n`,
+		"cannot destructure")
+}
+func TestDestructureRenameBindsUnderNewName(t *testing.T) {
+	expectErrContains(t, `
+		local s: { host: string } = { host = "h" }
+		local { host = addr } = s
+		local n: number = addr`,
+		`could not be converted`)
+}
+func TestDestructureAnnotationIsChecked(t *testing.T) {
+	expectErrContains(t, `
+		local s: { host: string } = { host = "h" }
+		local { host: number } = s`,
+		"could not be converted")
+}
+func TestDestructureDefaultDropsNil(t *testing.T) {
+	expectOK(t, `
+		local s: { port: number? } = { }
+		local { port or 80 } = s
+		local n: number = port`)
+}
+func TestSpreadRejectsNonTable(t *testing.T) {
+	expectErrContains(t, `
+		local n: number = 1
+		local t = { ...n }`,
+		"cannot spread")
+}
 func TestTypeParamConstraintRejectsBadArgument(t *testing.T) {
 	expectErrContains(t, `
 		interface Named { name: string }

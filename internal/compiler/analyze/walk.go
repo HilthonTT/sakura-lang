@@ -38,6 +38,11 @@ func (w *walker) walkStmt(s ast.Statement) {
 		w.walkExprs(n.Values)
 	case *ast.LocalStatement:
 		w.walkExprs(n.Values)
+	case *ast.LocalDestructureStatement:
+		w.walkExpr(n.Value)
+		for _, b := range n.Binds {
+			w.walkExpr(b.Default)
+		}
 	case *ast.LocalFunctionStatement:
 		w.walkExpr(n.Func)
 	case *ast.FunctionDeclaration:

@@ -99,6 +99,8 @@ const (
 
 	CloseTBC
 
+	JumpIfNil
+
 	InstructionCount
 )
 
@@ -169,6 +171,7 @@ var InstructionNameTable = []string{
 	Throw:           "throw",
 	MarkTBC:         "marktbc",
 	CloseTBC:        "closetbc",
+	JumpIfNil:       "jumpifnil",
 }
 
 type Instruction struct {

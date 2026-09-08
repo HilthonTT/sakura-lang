@@ -262,7 +262,7 @@ func rebuildParams(ins *Instruction) []any {
 		return []any{ins.StrA}
 	case LoadNil, LoadVararg, Pop, Concat, Return, EndTry, CloseTBC,
 		Closure, GetLocal, SetLocal, GetUpvalue, SetUpvalue, CloseUpvalues,
-		Jump, JumpIfFalse, JumpIfTrue, JumpIfFalseKeep, JumpIfTrueKeep, Try:
+		Jump, JumpIfFalse, JumpIfTrue, JumpIfFalseKeep, JumpIfTrueKeep, JumpIfNil, Try:
 		return []any{int(ins.A)}
 	case MarkTBC:
 		return []any{int(ins.A), ins.StrA}

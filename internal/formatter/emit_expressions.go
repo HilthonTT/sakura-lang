@@ -146,6 +146,8 @@ func (e *emitter) table(t *ast.TableConstructor, opts Options) Doc {
 	fields := make([]Doc, len(t.Fields))
 	for i, f := range t.Fields {
 		switch {
+		case f.IsSpread:
+			fields[i] = concat(text("..."), e.expr(f.Value, opts))
 		case f.Key == nil:
 			fields[i] = e.expr(f.Value, opts)
 		case f.IsBracketed:

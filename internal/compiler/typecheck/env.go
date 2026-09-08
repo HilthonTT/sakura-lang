@@ -3,7 +3,7 @@ package typecheck
 import "github.com/hilthontt/luascript/internal/compiler/ast"
 
 type genericAlias struct {
-	params []string
+	params []ast.TypeParam
 	target ast.TypeNode
 }
 

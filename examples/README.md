@@ -50,6 +50,7 @@ A few need a little more:
 | `44_match.lsc` | `match` v2 — typed bindings, `if` guards, enum/struct destructuring, **exhaustiveness checking**, a `Result` pipeline |
 | `45_generics.lsc` | generics — parametric functions with inference (`map`/`filter`), `Box<T>`, a `Stack<T>` |
 | `46_generics.lsc` | generics, continued — deeper inference and instantiation cases |
+| `61_generic_constraints.lsc` | `interface Name { ... }`, bounded type parameters (`<T: Named>`), and `A & B` intersection types |
 
 ## Modules and imports
 

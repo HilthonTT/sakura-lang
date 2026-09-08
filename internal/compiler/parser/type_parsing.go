@@ -9,7 +9,7 @@ import (
 )
 
 func (p *Parser) parseType() ast.TypeNode {
-	first := p.parseTypeAtom()
+	first := p.parseTypeIntersection()
 	if first == nil {
 		return nil
 	}
@@ -20,13 +20,34 @@ func (p *Parser) parseType() ast.TypeNode {
 	members := []ast.TypeNode{first}
 	for p.curTokenIs(token.Pipe) {
 		p.nextToken()
-		next := p.parseTypeAtom()
+		next := p.parseTypeIntersection()
 		if next == nil {
 			return nil
 		}
 		members = append(members, next)
 	}
 	return &ast.TypeUnion{BaseNode: baseAt(startTok), Members: members}
+}
+
+func (p *Parser) parseTypeIntersection() ast.TypeNode {
+	first := p.parseTypeAtom()
+	if first == nil {
+		return nil
+	}
+	if !p.curTokenIs(token.Ampersand) {
+		return first
+	}
+	startTok := p.curToken
+	members := []ast.TypeNode{first}
+	for p.curTokenIs(token.Ampersand) {
+		p.nextToken()
+		next := p.parseTypeAtom()
+		if next == nil {
+			return nil
+		}
+		members = append(members, next)
+	}
+	return &ast.TypeIntersection{BaseNode: baseAt(startTok), Members: members}
 }
 
 func (p *Parser) parseTypeAtom() ast.TypeNode {
@@ -310,20 +331,20 @@ func (p *Parser) closeTypeArg() bool {
 	return false
 }
 
-func (p *Parser) parseTypeParams() []string {
+func (p *Parser) parseTypeParams() []ast.TypeParam {
 	if !p.curTokenIs(token.LT) {
 		return nil
 	}
 	openTok := p.curToken
 	p.nextToken()
 
-	var params []string
+	var params []ast.TypeParam
 	seen := map[string]bool{}
 	for {
 		if !p.curTokenIs(token.Ident) {
 			p.errorAt(p.curToken, errors.SyntaxError, "type",
 				"expected a type-parameter name, got "+describeToken(p.curToken),
-				"generic parameters are names: `<T>`, `<K, V>`")
+				"generic parameters are names: `<T>`, `<K, V>`, `<T: Comparable>`")
 			return nil
 		}
 		name := p.curToken.Literal
@@ -334,20 +355,29 @@ func (p *Parser) parseTypeParams() []string {
 			return nil
 		}
 		seen[name] = true
-		params = append(params, name)
 		p.nextToken()
+
+		param := ast.TypeParam{Name: name}
+		if p.curTokenIs(token.Colon) {
+			p.nextToken()
+			param.Constraint = p.parseType()
+			if param.Constraint == nil {
+				return nil
+			}
+		}
+		params = append(params, param)
+
 		if !p.curTokenIs(token.Comma) {
 			break
 		}
 		p.nextToken()
 	}
-	if !p.curTokenIs(token.GT) {
+	if !p.closeTypeArg() {
 		p.errorAt(openTok, errors.SyntaxError, "type",
 			"expected '>' to close the type-parameter list, got "+describeToken(p.curToken),
-			"generic parameters look like `<T, U>`")
+			"generic parameters look like `<T, U>` or `<T: Bound>`")
 		return nil
 	}
-	p.nextToken()
 	return params
 }
 

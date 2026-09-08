@@ -903,7 +903,7 @@ end`)
 
 func TestParseGenericFunction(t *testing.T) {
 	lf := parseExpect1(t, "local function id<T>(x: T): T return x end").(*ast.LocalFunctionStatement)
-	if len(lf.Func.TypeParams) != 1 || lf.Func.TypeParams[0] != "T" {
+	if len(lf.Func.TypeParams) != 1 || lf.Func.TypeParams[0].Name != "T" {
 		t.Errorf("type params = %v, want [T]", lf.Func.TypeParams)
 	}
 }
@@ -917,7 +917,7 @@ func TestParseGenericFunctionMultiParam(t *testing.T) {
 
 func TestParseGenericTypeAlias(t *testing.T) {
 	ta := parseExpect1(t, "type Box<T> = { value: T }").(*ast.TypeAliasStatement)
-	if len(ta.TypeParams) != 1 || ta.TypeParams[0] != "T" {
+	if len(ta.TypeParams) != 1 || ta.TypeParams[0].Name != "T" {
 		t.Errorf("type params = %v, want [T]", ta.TypeParams)
 	}
 }
@@ -942,7 +942,7 @@ func TestParseNestedGenericApplication(t *testing.T) {
 
 func TestParseGenericStruct(t *testing.T) {
 	ss := parseExpect1(t, "struct Pair<A, B> { first: A, second: B }").(*ast.StructStatement)
-	if len(ss.TypeParams) != 2 || ss.TypeParams[0] != "A" || ss.TypeParams[1] != "B" {
+	if len(ss.TypeParams) != 2 || ss.TypeParams[0].Name != "A" || ss.TypeParams[1].Name != "B" {
 		t.Errorf("type params = %v, want [A B]", ss.TypeParams)
 	}
 }

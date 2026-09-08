@@ -59,6 +59,10 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseStructStatement()
 	}
 
+	if p.curTokenIs(token.Ident) && p.curToken.Literal == "interface" && p.peekTokenIs(token.Ident) {
+		return p.parseInterfaceStatement()
+	}
+
 	if p.curTokenIs(token.Ident) && p.curToken.Literal == "continue" && !p.peekStartsSuffix() {
 		return p.parseContinueStatement()
 	}
@@ -76,7 +80,7 @@ func (p *Parser) parseTypeAliasStatement() ast.Statement {
 	name := p.curToken.Literal
 	p.nextToken()
 
-	var typeParams []string
+	var typeParams []ast.TypeParam
 	if p.curTokenIs(token.LT) {
 		typeParams = p.parseTypeParams()
 		if p.error != nil {

@@ -129,7 +129,8 @@ func (c *checker) structConstructorType(s *ast.StructStatement) *Type {
 		Fn: &FunctionShape{
 			Params:     params,
 			Returns:    []*Type{shape},
-			TypeParams: s.TypeParams,
+			TypeParams: ast.TypeParamNames(s.TypeParams),
+			TypeBounds: c.typeBounds(s.TypeParams),
 			Struct:     &StructCtor{Name: s.Name.Name, Shape: shape.Table},
 		},
 	}

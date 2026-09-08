@@ -53,6 +53,8 @@ func (e *emitter) statement(stmt ast.Statement, opts Options) Doc {
 		return e.typeAlias(s, opts)
 	case *ast.EnumStatement:
 		return e.enumStmt(s, opts)
+	case *ast.StructStatement:
+		return e.structStmt(s, opts)
 	}
 	return text(stmt.String())
 }
@@ -105,7 +107,7 @@ func (e *emitter) funcDecl(s *ast.FunctionDeclaration, opts Options) Doc {
 }
 
 func (e *emitter) funcSig(fe *ast.FunctionExpression, opts Options) Doc {
-	tp := typeParamList(fe.TypeParams)
+	tp := e.typeParamList(fe.TypeParams, opts)
 	var ps []Doc
 	for _, p := range fe.Params {
 		d := text(p.Name.Name)
@@ -269,14 +271,40 @@ func (e *emitter) returnStmt(s *ast.ReturnStatement, opts Options) Doc {
 }
 
 func (e *emitter) typeAlias(s *ast.TypeAliasStatement, opts Options) Doc {
-	return concat(text("type "), text(s.Name), typeParamList(s.TypeParams), text(" = "), e.typeNode(s.Target, opts))
+	if s.IsInterface {
+		return concat(text("interface "), text(s.Name), e.typeParamList(s.TypeParams, opts),
+			text(" "), e.typeNode(s.Target, opts))
+	}
+	return concat(text("type "), text(s.Name), e.typeParamList(s.TypeParams, opts),
+		text(" = "), e.typeNode(s.Target, opts))
 }
 
-func typeParamList(params []string) Doc {
+func (e *emitter) typeParamList(params []ast.TypeParam, opts Options) Doc {
 	if len(params) == 0 {
 		return nilDoc()
 	}
-	return text("<" + strings.Join(params, ", ") + ">")
+	parts := make([]Doc, len(params))
+	for i, p := range params {
+		parts[i] = text(p.Name)
+		if p.Constraint != nil {
+			parts[i] = concat(parts[i], text(": "), e.typeNode(p.Constraint, opts))
+		}
+	}
+	return concat(text("<"), join(text(", "), parts...), text(">"))
+}
+
+func (e *emitter) structStmt(s *ast.StructStatement, opts Options) Doc {
+	if s.Name == nil {
+		return text(s.String())
+	}
+	fields := make([]Doc, len(s.Fields))
+	for i, f := range s.Fields {
+		fields[i] = concat(text(f.Name), text(": "), e.typeNode(f.Type, opts))
+	}
+	return concat(
+		text("struct "), text(s.Name.Name), e.typeParamList(s.TypeParams, opts), text(" {"),
+		nest(opts.indent(), concat(hardLine(), join(concat(text(","), hardLine()), fields...), text(","))),
+		hardLine(), text("}"))
 }
 
 func (e *emitter) enumStmt(s *ast.EnumStatement, opts Options) Doc {

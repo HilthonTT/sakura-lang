@@ -18,6 +18,12 @@ func (e *emitter) typeNode(t ast.TypeNode, opts Options) Doc {
 			ms[i] = e.typeNode(m, opts)
 		}
 		return group(join(concat(line(), text("| ")), ms...))
+	case *ast.TypeIntersection:
+		ms := make([]Doc, len(v.Members))
+		for i, m := range v.Members {
+			ms[i] = e.typeNode(m, opts)
+		}
+		return group(join(concat(line(), text("& ")), ms...))
 	case *ast.TypeFunction:
 		return e.typeFunc(v, opts)
 	case *ast.TypeTable:

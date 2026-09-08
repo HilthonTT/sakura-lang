@@ -394,7 +394,7 @@ type StructField struct {
 type StructStatement struct {
 	BaseNode
 	Name       *Identifier
-	TypeParams []string
+	TypeParams []TypeParam
 	Fields     []StructField
 }
 
@@ -404,11 +404,7 @@ func (ss *StructStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString("struct ")
 	out.WriteString(ss.Name.String())
-	if len(ss.TypeParams) > 0 {
-		out.WriteString("<")
-		out.WriteString(strings.Join(ss.TypeParams, ", "))
-		out.WriteString(">")
-	}
+	out.WriteString(FormatTypeParams(ss.TypeParams))
 	out.WriteString(" {")
 	for i, f := range ss.Fields {
 		if i > 0 {

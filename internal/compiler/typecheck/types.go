@@ -30,6 +30,8 @@ type Type struct {
 	Union []*Type
 	Lit   *LiteralValue
 
+	Bound *Type
+
 	AliasName string
 }
 
@@ -40,6 +42,7 @@ type FunctionShape struct {
 	VarargType *Type
 
 	TypeParams []string
+	TypeBounds map[string]*Type
 
 	Struct *StructCtor
 }
@@ -128,6 +131,42 @@ outer:
 
 func Optional(t *Type) *Type {
 	return NewUnion(t, nilT)
+}
+
+func boundOf(t *Type) *Type {
+	if t != nil && t.Kind == KindTypeParam && t.Bound != nil {
+		return t.Bound
+	}
+	return t
+}
+
+func Intersect(members ...*Type) *Type {
+	var fields []TableField
+	var indexer *Indexer
+	seen := map[string]int{}
+	for _, m := range members {
+		if m == nil || m.Kind == KindAny {
+			continue
+		}
+		if m.Kind != KindTable || m.Table == nil {
+			return nil
+		}
+		for _, f := range m.Table.Fields {
+			if at, ok := seen[f.Key]; ok {
+				fields[at] = f
+				continue
+			}
+			seen[f.Key] = len(fields)
+			fields = append(fields, f)
+		}
+		if m.Table.Indexer != nil {
+			indexer = m.Table.Indexer
+		}
+	}
+	if len(fields) == 0 && indexer == nil {
+		return anyT
+	}
+	return NewTable(fields, indexer)
 }
 
 func Same(a, b *Type) bool {

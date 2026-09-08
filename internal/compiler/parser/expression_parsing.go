@@ -407,7 +407,7 @@ func (p *Parser) parseFunctionExpression() ast.Expression {
 }
 
 func (p *Parser) parseFunctionBody(headerTok token.Token) *ast.FunctionExpression {
-	var typeParams []string
+	var typeParams []ast.TypeParam
 	if p.curTokenIs(token.LT) {
 		typeParams = p.parseTypeParams()
 		if p.error != nil {

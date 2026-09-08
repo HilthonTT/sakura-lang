@@ -93,13 +93,15 @@ of extra statements. Several extensions are desugared in the parser and
 have no dedicated bytecode: compound assignment, backtick string
 interpolation, and match.
 
-type, struct and continue are contextual keywords — they still work as
+type, struct, interface and continue are contextual keywords — they still work as
 ordinary identifiers where no such statement can start. match, enum,
 defer, try, catch and throw are hard keywords.`,
 		SeeAlso: []string{"_G"},
 		Entries: []Entry{
 			{Name: "local", Kind: EntryKeyword, Signature: "local x [, y] = expr [, expr]",
 				Summary: "Declares block-scoped variables. Attributes are supported: `local x <const> = 1` and `local h <close> = f()`."},
+			{Name: "interface", Kind: EntryKeyword, Signature: "interface Name { field: T }",
+				Summary: "Declares a named structural type. Equivalent to a type alias whose target is a table, kept as its own form so the formatter round-trips it, and intended for use as a generic constraint. A contextual keyword. See examples/61_generic_constraints.lsc."},
 			{Name: "function", Kind: EntryKeyword, Signature: "function f(a: T, b: T = default): R ... end",
 				Summary: "Declares a function. Parameters may carry type annotations and default values; a defaulted parameter falls back only on nil, not on false."},
 			{Name: "if", Kind: EntryKeyword, Signature: "if c then ... elseif c2 then ... else ... end",
@@ -145,7 +147,20 @@ is unaffected. See examples/44_match.lsc.`},
 			{Name: "struct", Kind: EntryKeyword, Signature: "struct Name x: number, y: number end",
 				Summary: "Declares a struct type and its constructor. A contextual keyword. See examples/42_structs.lsc."},
 			{Name: "type", Kind: EntryKeyword, Signature: "type Name = T  |  type Box<T> = { value: T }",
-				Summary: "Declares a type alias, optionally generic. A contextual keyword. Aliases may be primitives, literals, unions, optionals, function types or structural tables."},
+				Summary: "Declares a type alias, optionally generic. A contextual keyword. Aliases may be primitives, literals, unions, intersections, optionals, function types or structural tables."},
+			{Name: "generic constraints", Kind: EntryKeyword, Signature: "function f<T: Named>(x: T): T ... end",
+				Summary: "Bounds a type parameter by another type.",
+				Detail: `A constrained parameter is checked at every use: an explicit type
+argument (Box<number>) and an inferred one (from the argument types at a
+call) must both be assignable to the bound. Inside the body the parameter
+is still gradual, but it carries its bound, so field access resolves
+through it. Constraints are accepted on functions, type aliases and
+structs. See examples/61_generic_constraints.lsc.`},
+			{Name: "intersection types", Kind: EntryKeyword, Signature: "type Both = Named & Aged",
+				Summary: "A value satisfying every member.",
+				Detail: `Only table shapes (and any) can be intersected; the checker merges their
+fields into one shape, with later members winning on a clash. The &
+operator binds tighter than |, so A & B | C is (A & B) | C.`},
 			{Name: "literal types", Kind: EntryKeyword, Signature: `type Mode = "read" | "write" | "append"`,
 				Summary: "A string, number or boolean literal is a type of its own, inhabited by that one value.",
 				Detail: `A singleton is assignable to its base primitive but not the reverse, so

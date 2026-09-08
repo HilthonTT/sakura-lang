@@ -37,6 +37,18 @@ func (c *checker) resolveAST(n ast.TypeNode) *Type {
 		return c.resolveTypeApplication(t)
 	case *ast.TypeOptional:
 		return Optional(c.resolveAST(t.Inner))
+	case *ast.TypeIntersection:
+		members := make([]*Type, len(t.Members))
+		for i, m := range t.Members {
+			members[i] = c.resolveAST(m)
+		}
+		merged := Intersect(members...)
+		if merged == nil {
+			c.errf(n.Line(), "bad-intersection",
+				"only table types can be intersected with '&', got %q", t.String())
+			return anyT
+		}
+		return merged
 	case *ast.TypeUnion:
 		members := make([]*Type, len(t.Members))
 		for i, m := range t.Members {

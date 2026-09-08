@@ -86,7 +86,7 @@ type TypedParam struct {
 
 type FunctionExpression struct {
 	BaseNode
-	TypeParams  []string
+	TypeParams  []TypeParam
 	Params      []TypedParam
 	IsVararg    bool
 	VarargType  TypeNode

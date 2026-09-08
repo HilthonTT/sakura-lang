@@ -88,7 +88,7 @@ func (c *checker) typeOfTableConstructor(t *ast.TableConstructor) *Type {
 }
 
 func (c *checker) typeOfIndex(e *ast.IndexExpression) *Type {
-	base := c.typeOfExpression(e.Object)
+	base := boundOf(c.typeOfExpression(e.Object))
 	if base.Kind == KindAny {
 		return anyT
 	}
@@ -154,7 +154,7 @@ func (c *checker) typeOfCall(call *ast.CallExpression) *Type {
 		return anyT
 	}
 	if len(fn.TypeParams) > 0 {
-		return c.instantiateCall(fn, args)[0]
+		return c.instantiateCall(call.Line(), fn, args)[0]
 	}
 	return fn.Returns[0]
 }

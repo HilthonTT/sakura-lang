@@ -324,7 +324,8 @@ func (c *checker) functionShapeFromExpr(fe *ast.FunctionExpression) *Type {
 		va = c.resolveAST(fe.VarargType)
 	}
 	shape := NewFunction(params, returns, fe.IsVararg, va)
-	shape.Fn.TypeParams = fe.TypeParams
+	shape.Fn.TypeParams = ast.TypeParamNames(fe.TypeParams)
+	shape.Fn.TypeBounds = c.typeBounds(fe.TypeParams)
 	return shape
 }
 

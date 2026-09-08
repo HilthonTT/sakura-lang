@@ -74,6 +74,21 @@ func (*TypeOptional) typeNode()              {}
 func (t *TypeOptional) TokenLiteral() string { return t.Token.Literal }
 func (t *TypeOptional) String() string       { return t.Inner.String() + "?" }
 
+type TypeIntersection struct {
+	BaseNode
+	Members []TypeNode
+}
+
+func (*TypeIntersection) typeNode()              {}
+func (t *TypeIntersection) TokenLiteral() string { return t.Token.Literal }
+func (t *TypeIntersection) String() string {
+	parts := make([]string, len(t.Members))
+	for i, m := range t.Members {
+		parts[i] = m.String()
+	}
+	return strings.Join(parts, " & ")
+}
+
 type TypeUnion struct {
 	BaseNode
 	Members []TypeNode
@@ -174,21 +189,55 @@ func (t *TypeTable) String() string {
 	return out.String()
 }
 
+type TypeParam struct {
+	Name       string
+	Constraint TypeNode
+}
+
+func (tp TypeParam) String() string {
+	if tp.Constraint != nil {
+		return tp.Name + ": " + tp.Constraint.String()
+	}
+	return tp.Name
+}
+
+func TypeParamNames(ps []TypeParam) []string {
+	if len(ps) == 0 {
+		return nil
+	}
+	out := make([]string, len(ps))
+	for i, p := range ps {
+		out[i] = p.Name
+	}
+	return out
+}
+
+func FormatTypeParams(ps []TypeParam) string {
+	if len(ps) == 0 {
+		return ""
+	}
+	parts := make([]string, len(ps))
+	for i, p := range ps {
+		parts[i] = p.String()
+	}
+	return "<" + strings.Join(parts, ", ") + ">"
+}
+
 type TypeAliasStatement struct {
 	BaseNode
-	Name       string
-	TypeParams []string
-	Target     TypeNode
+	Name        string
+	TypeParams  []TypeParam
+	Target      TypeNode
+	IsInterface bool
 }
 
 func (*TypeAliasStatement) statementNode()         {}
 func (s *TypeAliasStatement) TokenLiteral() string { return s.Token.Literal }
 func (s *TypeAliasStatement) String() string {
-	head := "type " + s.Name
-	if len(s.TypeParams) > 0 {
-		head += "<" + strings.Join(s.TypeParams, ", ") + ">"
+	if s.IsInterface {
+		return "interface " + s.Name + FormatTypeParams(s.TypeParams) + " " + s.Target.String()
 	}
-	return head + " = " + s.Target.String()
+	return "type " + s.Name + FormatTypeParams(s.TypeParams) + " = " + s.Target.String()
 }
 
 type TypeAssertionExpression struct {

@@ -13,6 +13,9 @@ func assignable(from, to *Type) bool {
 		if from.Kind == KindTypeParam && to.Kind == KindTypeParam {
 			return from.AliasName == to.AliasName
 		}
+		if from.Kind == KindTypeParam && from.Bound != nil {
+			return assignable(from.Bound, to)
+		}
 		return true
 	}
 

@@ -2,19 +2,25 @@ package typecheck
 
 import "github.com/hilthontt/luascript/internal/compiler/ast"
 
-func (c *checker) pushTypeParams(names []string) func() {
-	if len(names) == 0 {
+func (c *checker) pushTypeParams(params []ast.TypeParam) func() {
+	if len(params) == 0 {
 		return func() {}
 	}
 	type prev struct {
 		t   *Type
 		had bool
 	}
-	saved := make(map[string]prev, len(names))
-	for _, n := range names {
-		t, had := c.env.aliases[n]
-		saved[n] = prev{t: t, had: had}
-		c.env.aliases[n] = &Type{Kind: KindTypeParam, AliasName: n}
+	saved := make(map[string]prev, len(params))
+	for _, tp := range params {
+		t, had := c.env.aliases[tp.Name]
+		saved[tp.Name] = prev{t: t, had: had}
+		c.env.aliases[tp.Name] = &Type{Kind: KindTypeParam, AliasName: tp.Name}
+	}
+	for _, tp := range params {
+		if tp.Constraint == nil {
+			continue
+		}
+		c.env.aliases[tp.Name].Bound = c.resolveAST(tp.Constraint)
 	}
 	return func() {
 		for n, p := range saved {
@@ -25,6 +31,20 @@ func (c *checker) pushTypeParams(names []string) func() {
 			}
 		}
 	}
+}
+
+func (c *checker) typeBounds(params []ast.TypeParam) map[string]*Type {
+	var out map[string]*Type
+	for _, tp := range params {
+		if tp.Constraint == nil {
+			continue
+		}
+		if out == nil {
+			out = map[string]*Type{}
+		}
+		out[tp.Name] = c.resolveAST(tp.Constraint)
+	}
+	return out
 }
 
 const maxInstantiationDepth = 64
@@ -61,6 +81,17 @@ func (c *checker) resolveTypeApplication(app *ast.TypeApplication) *Type {
 	for i, a := range app.Args {
 		args[i] = c.resolveAST(a)
 	}
+	for i, tp := range g.params {
+		if tp.Constraint == nil {
+			continue
+		}
+		bound := c.resolveAST(tp.Constraint)
+		if !assignable(args[i], bound) {
+			c.errf(app.Line(), "constraint",
+				"type argument %q does not satisfy the constraint %q on %q",
+				args[i].String(), bound.String(), tp.Name)
+		}
+	}
 	restore := c.bindParamTypes(g.params, args)
 	defer restore()
 
@@ -73,13 +104,14 @@ func (c *checker) resolveTypeApplication(app *ast.TypeApplication) *Type {
 	return t
 }
 
-func (c *checker) bindParamTypes(params []string, args []*Type) func() {
+func (c *checker) bindParamTypes(params []ast.TypeParam, args []*Type) func() {
 	type prev struct {
 		t   *Type
 		had bool
 	}
 	saved := make(map[string]prev, len(params))
-	for i, n := range params {
+	for i, tp := range params {
+		n := tp.Name
 		t, had := c.env.aliases[n]
 		saved[n] = prev{t: t, had: had}
 		bound := *args[i]
@@ -99,7 +131,7 @@ func (c *checker) bindParamTypes(params []string, args []*Type) func() {
 	}
 }
 
-func (c *checker) instantiateCall(fn *FunctionShape, args []*Type) []*Type {
+func (c *checker) instantiateCall(line int, fn *FunctionShape, args []*Type) []*Type {
 	subst := map[string]*Type{}
 	for _, name := range fn.TypeParams {
 		subst[name] = nil
@@ -111,6 +143,12 @@ func (c *checker) instantiateCall(fn *FunctionShape, args []*Type) []*Type {
 	for name, t := range subst {
 		if t == nil {
 			subst[name] = anyT
+			continue
+		}
+		if bound, ok := fn.TypeBounds[name]; ok && !assignable(t, bound) {
+			c.errf(line, "constraint",
+				"type argument %q does not satisfy the constraint %q on %q",
+				t.String(), bound.String(), name)
 		}
 	}
 	out := make([]*Type, len(fn.Returns))
@@ -193,7 +231,8 @@ func substitute(t *Type, subst map[string]*Type) *Type {
 		}
 		return &Type{Kind: KindFunction, AliasName: t.AliasName, Fn: &FunctionShape{
 			Params: params, Returns: returns, IsVararg: t.Fn.IsVararg,
-			VarargType: va, TypeParams: t.Fn.TypeParams, Struct: t.Fn.Struct,
+			VarargType: va, TypeParams: t.Fn.TypeParams, TypeBounds: t.Fn.TypeBounds,
+			Struct: t.Fn.Struct,
 		}}
 	case KindTable:
 		if t.Table == nil {

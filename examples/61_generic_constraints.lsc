@@ -1,0 +1,69 @@
+-- interface, generic constraints and intersection types.
+--
+--   interface Name { ... }        a named structural type
+--   function f<T: Bound>(...)     a type parameter bounded by another type
+--   A & B                         a value satisfying both
+
+-- `interface` is the same thing as a type alias whose target is a table; it
+-- exists as its own form because that is how these types are meant to read
+-- when they are used as bounds.
+interface Named {
+    name: string,
+}
+
+interface Aged {
+    age: number,
+}
+
+print("=== intersection ===")
+
+-- `&` merges table shapes. Only tables (and any) can be intersected.
+type Person = Named & Aged
+
+local function describe(who: Person): string
+    return who.name .. " is " .. who.age
+end
+
+print(describe({ name = "Ada", age = 36 }))
+print()
+
+print("=== constrained type parameters ===")
+
+-- An unconstrained <T> is gradual: nothing is known about it inside the
+-- body. A bound says what the body may rely on, and the checker verifies
+-- every type argument against it — inferred at a call as well as written
+-- out explicitly.
+local function label<T: Named>(item: T): string
+    return "<" .. item.name .. ">"
+end
+
+print(label({ name = "widget" }))
+print(label({ name = "gadget", age = 2 }))
+
+-- `label(42)` would be rejected here:
+--   type argument "number" does not satisfy the constraint "Named" on "T"
+
+-- Bounds work on type aliases and structs too.
+type Box<T: Named> = { value: T }
+
+local crate: Box<Named> = { value = { name = "cargo" } }
+print(crate.value.name)
+
+struct Tagged<T: Named> {
+    payload: T,
+}
+
+local t = Tagged{ payload = { name = "parcel" } }
+print(t.payload.name)
+print()
+
+print("=== bounds inside the body ===")
+
+-- Because the parameter carries its bound, field access through it
+-- resolves: `item.name` below is a string, not any.
+local function shout<T: Named>(item: T): string
+    local n: string = item.name
+    return n .. "!"
+end
+
+print(shout({ name = "here" }))

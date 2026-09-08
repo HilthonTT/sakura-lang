@@ -53,6 +53,9 @@ func sortByLine(errs []TypeError) {
 }
 
 func (c *checker) errf(line int, code, format string, args ...any) {
+	if c.silent {
+		return
+	}
 	c.errors = append(c.errors, TypeError{
 		Line:    line,
 		Code:    code,
@@ -61,6 +64,9 @@ func (c *checker) errf(line int, code, format string, args ...any) {
 }
 
 func (c *checker) errAssign(line int, got, want *Type) {
+	if c.silent {
+		return
+	}
 	c.errors = append(c.errors, TypeError{
 		Line: line,
 		Code: "incompat-assign",

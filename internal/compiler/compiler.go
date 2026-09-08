@@ -30,7 +30,10 @@ func CompileToInstructionsWith(g *bytecode.Generator, input string, pm parser.Mo
 	}
 
 	if l.ModeDirective != "nocheck" {
-		opts := typecheck.Options{Strict: l.ModeDirective == "strict"}
+		opts := typecheck.Options{
+			Strict: l.ModeDirective == "strict",
+			REPL:   pm == parser.REPLMode,
+		}
 		if errs := typecheck.Check(program, opts); len(errs) > 0 {
 			return nil, &typecheck.TypeErrors{Errors: errs}
 		}

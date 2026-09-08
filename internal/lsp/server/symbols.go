@@ -44,6 +44,22 @@ func documentSymbols(uri, src string) []protocol.SymbolInformationOrDocumentSymb
 			for _, b := range s.Binds {
 				emit(b.Bind, protocol.SymbolKindVariable, s.Line())
 			}
+		case *ast.StructStatement:
+			if s.Name != nil {
+				emit(s.Name.Name, protocol.SymbolKindStruct, s.Line())
+			}
+		case *ast.ImplStatement:
+			if s.Target != nil {
+				for _, m := range s.Members {
+					emit(s.Target.Name+"."+m.Name, protocol.SymbolKindMethod, s.Line())
+				}
+			}
+		case *ast.TypeAliasStatement:
+			kind := protocol.SymbolKindClass
+			if s.IsInterface {
+				kind = protocol.SymbolKindInterface
+			}
+			emit(s.Name, kind, s.Line())
 		}
 	}
 	return out

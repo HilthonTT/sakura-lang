@@ -1,0 +1,81 @@
+-- impl: attach functions to an existing name.
+--
+--   impl Point
+--       function magnitude(self): number ... end
+--   end
+--
+-- Every member lowers to `Point.magnitude = function(self) ... end`. What
+-- makes that useful for a struct is that a struct's constructor is a
+-- callable class table and its instances index through it, so members are
+-- reachable both as statics and as methods.
+
+struct Point {
+    x: number,
+    y: number,
+}
+
+impl Point
+    -- No `self`, so this reads as a static: Point.origin().
+    function origin(): Point
+        return Point(0, 0)
+    end
+
+    -- First parameter named `self`, so this reads as a method: p:magnitude().
+    -- An unannotated `self` is typed as the struct, so `self.x` is a number.
+    function magnitude(self): number
+        return math.sqrt(self.x * self.x + self.y * self.y)
+    end
+
+    function translate(self, dx: number, dy: number): Point
+        return Point(self.x + dx, self.y + dy)
+    end
+
+    function scale(self, k: number): Point
+        return Point(self.x * k, self.y * k)
+    end
+end
+
+print("=== statics ===")
+print("Point.origin() :", tostring(Point.origin()))
+print()
+
+print("=== methods ===")
+local p = Point(3, 4)
+print("p              :", tostring(p))
+print("p:magnitude()  :", p:magnitude())
+print("p:translate()  :", tostring(p:translate(1, 1)))
+print("chained        :", tostring(p:scale(2):translate(-1, -1)))
+print()
+
+-- typeof still reports the struct name; instances are ordinary tables that
+-- happen to carry a metatable.
+print("=== identity ===")
+print("typeof(p)      :", typeof(p))
+print("type(p)        :", type(p))
+print()
+
+-- The checker knows the member types, so a wrong return type is caught:
+--   local s: string = p:magnitude()
+--   Type "number" could not be converted into "string"
+print("=== typed use ===")
+local length: number = p:magnitude()
+print("length         :", length)
+print()
+
+-- impl is not limited to structs. Any name already bound to a table works,
+-- which makes it a compact way to build a namespace.
+print("=== plain tables ===")
+local Text = {}
+
+impl Text
+    function shout(s: string): string
+        return string.upper(s) .. "!"
+    end
+
+    function repeated(s: string, n: number): string
+        return string.rep(s, n)
+    end
+end
+
+print("Text.shout     :", Text.shout("hello"))
+print("Text.repeated  :", Text.repeated("ab", 3))

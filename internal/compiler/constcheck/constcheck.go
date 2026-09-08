@@ -91,6 +91,10 @@ func (c *checker) stmt(s ast.Statement) {
 			}
 			c.define(b.Bind, "")
 		}
+	case *ast.ImplStatement:
+		for _, m := range n.Members {
+			c.function(m.Func)
+		}
 	case *ast.LocalFunctionStatement:
 		c.define(n.Name, "")
 		c.function(n.Func)

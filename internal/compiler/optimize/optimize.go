@@ -35,6 +35,10 @@ func foldStmt(s ast.Statement) {
 				n.Binds[i].Default = foldExpr(n.Binds[i].Default)
 			}
 		}
+	case *ast.ImplStatement:
+		for _, m := range n.Members {
+			foldFunc(m.Func)
+		}
 	case *ast.LocalFunctionStatement:
 		foldFunc(n.Func)
 	case *ast.FunctionDeclaration:

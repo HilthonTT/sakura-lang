@@ -107,6 +107,17 @@ func (c *checker) typeOfIndex(e *ast.IndexExpression) *Type {
 	if base.Kind == KindAny {
 		return anyT
 	}
+	if base.Kind == KindFunction && base.Fn != nil && base.Fn.Struct != nil {
+		if name, ok := staticIndexName(e); ok {
+			if t, found := c.implMembers[base.Fn.Struct.Name][name]; found {
+				return c.optionalResult(e, t)
+			}
+			c.errf(e.Line(), "missing-field",
+				"struct %q has no static member %q", base.Fn.Struct.Name, name)
+			return anyT
+		}
+		return anyT
+	}
 	if base.Kind != KindTable {
 		c.errf(e.Line(), "index-non-table",
 			"cannot index a value of type %q", base.String())
@@ -199,11 +210,35 @@ func callableShape(t *Type) *FunctionShape {
 }
 
 func (c *checker) typeOfMethodCall(call *ast.MethodCallExpression) *Type {
-	c.walkExpressionDiscard(call.Object)
+	recv := c.typeOfExpression(call.Object)
 	for _, a := range call.Args {
 		c.walkExpressionDiscard(a)
 	}
 	c.invalidateCallRefinements()
+
+	if call.Optional {
+		if recv.Kind == KindNil {
+			return nilT
+		}
+		recv = removeKind(recv, KindNil)
+	}
+	recv = boundOf(recv)
+	if recv.Kind != KindTable || recv.Table == nil {
+		return anyT
+	}
+	for _, f := range recv.Table.Fields {
+		if f.Key != call.Method {
+			continue
+		}
+		fn := callableShape(f.Type)
+		if fn == nil || len(fn.Returns) == 0 {
+			return anyT
+		}
+		if call.Optional {
+			return Optional(fn.Returns[0])
+		}
+		return fn.Returns[0]
+	}
 	return anyT
 }
 

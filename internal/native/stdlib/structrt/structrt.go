@@ -26,17 +26,33 @@ func defineStruct(_ *vm.VM, args []vm.Value) []vm.Value {
 		}
 	}
 
-	ctor := &vm.GoFunc{
+	class := vm.NewTable(0, 4)
+	instanceMeta := instanceMetatable(name, fields, class)
+
+	classMeta := vm.NewTable(0, 3)
+	classMeta.Set("__type", name)
+	classMeta.Set("__call", &vm.GoFunc{
 		Name: name,
-		Fn:   makeConstructor(name, fields),
-	}
-	return []vm.Value{ctor}
+		Fn:   makeConstructor(name, fields, instanceMeta),
+	})
+	classMeta.Set("__tostring", &vm.GoFunc{
+		Name: name + ".__tostring",
+		Fn: func(_ *vm.VM, _ []vm.Value) []vm.Value {
+			return []vm.Value{name}
+		},
+	})
+	class.SetMetatable(classMeta)
+
+	return []vm.Value{class}
 }
 
-func makeConstructor(name string, fields []string) func(*vm.VM, []vm.Value) []vm.Value {
+func makeConstructor(_ string, fields []string, meta *vm.Table) func(*vm.VM, []vm.Value) []vm.Value {
 	return func(_ *vm.VM, args []vm.Value) []vm.Value {
-		inst := vm.NewTable(0, len(fields))
+		if len(args) > 0 {
+			args = args[1:]
+		}
 
+		inst := vm.NewTable(0, len(fields))
 		if named, ok := namedArg(args); ok {
 			for _, f := range fields {
 				inst.Set(f, named.Get(f))
@@ -48,8 +64,7 @@ func makeConstructor(name string, fields []string) func(*vm.VM, []vm.Value) []vm
 				}
 			}
 		}
-
-		inst.SetMetatable(structMetatable(name, fields))
+		inst.SetMetatable(meta)
 		return []vm.Value{inst}
 	}
 }
@@ -68,9 +83,10 @@ func namedArg(args []vm.Value) (*vm.Table, bool) {
 	return t, true
 }
 
-func structMetatable(name string, fields []string) *vm.Table {
-	mt := vm.NewTable(0, 2)
+func instanceMetatable(name string, fields []string, class *vm.Table) *vm.Table {
+	mt := vm.NewTable(0, 3)
 	mt.Set("__type", name)
+	mt.Set("__index", class)
 	mt.Set("__tostring", &vm.GoFunc{
 		Name: name + ".__tostring",
 		Fn: func(_ *vm.VM, a []vm.Value) []vm.Value {

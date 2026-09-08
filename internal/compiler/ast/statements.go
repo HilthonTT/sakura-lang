@@ -479,6 +479,34 @@ func (ds *LocalDestructureStatement) String() string {
 	return "local " + open + " " + strings.Join(parts, ", ") + " " + close + " = " + ds.Value.String()
 }
 
+type ImplMember struct {
+	Name string
+	Func *FunctionExpression
+}
+
+type ImplStatement struct {
+	BaseNode
+	Target  *Identifier
+	Members []ImplMember
+}
+
+func (*ImplStatement) statementNode()          {}
+func (is *ImplStatement) TokenLiteral() string { return is.Token.Literal }
+func (is *ImplStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString("impl ")
+	out.WriteString(is.Target.String())
+	out.WriteString("\n")
+	for _, m := range is.Members {
+		out.WriteString("function ")
+		out.WriteString(m.Name)
+		out.WriteString(strings.TrimPrefix(m.Func.String(), "function"))
+		out.WriteString("\n")
+	}
+	out.WriteString("end")
+	return out.String()
+}
+
 type TryCatchStatement struct {
 	BaseNode
 	Try      *Block

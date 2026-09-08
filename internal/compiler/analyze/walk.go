@@ -43,6 +43,10 @@ func (w *walker) walkStmt(s ast.Statement) {
 		for _, b := range n.Binds {
 			w.walkExpr(b.Default)
 		}
+	case *ast.ImplStatement:
+		for _, m := range n.Members {
+			w.walkExpr(m.Func)
+		}
 	case *ast.LocalFunctionStatement:
 		w.walkExpr(n.Func)
 	case *ast.FunctionDeclaration:

@@ -43,6 +43,40 @@ func (c *checker) preResolveAliases(stmts []ast.Statement) {
 			c.env.aliases[st.Name.Name] = c.structType(st)
 		}
 	}
+	c.resolveImplMembers(stmts)
+}
+
+func (c *checker) resolveImplMembers(stmts []ast.Statement) {
+	c.silent = true
+	defer func() { c.silent = false }()
+	for _, s := range stmts {
+		impl, ok := s.(*ast.ImplStatement)
+		if !ok || impl.Target == nil {
+			continue
+		}
+		name := impl.Target.Name
+		target, known := c.env.aliases[name]
+		for _, m := range impl.Members {
+			shape := c.functionShapeFromExpr(m.Func)
+			if c.implMembers[name] == nil {
+				c.implMembers[name] = map[string]*Type{}
+			}
+			c.implMembers[name][m.Name] = shape
+			if known && target != nil && target.Kind == KindTable && target.Table != nil {
+				target.Table.Fields = upsertField(target.Table.Fields, m.Name, shape)
+			}
+		}
+	}
+}
+
+func upsertField(fields []TableField, key string, t *Type) []TableField {
+	for i := range fields {
+		if fields[i].Key == key {
+			fields[i].Type = t
+			return fields
+		}
+	}
+	return append(fields, TableField{Key: key, Type: t})
 }
 
 func structTableAST(s *ast.StructStatement) ast.TypeNode {
@@ -124,11 +158,17 @@ func (c *checker) structConstructorType(s *ast.StructStatement) *Type {
 	for i, f := range shape.Table.Fields {
 		params[i] = f.Type
 	}
+	instance := shape
+	if len(s.TypeParams) == 0 {
+		if a, ok := c.env.aliases[s.Name.Name]; ok && a != nil && a.Kind == KindTable {
+			instance = a
+		}
+	}
 	return &Type{
 		Kind: KindFunction,
 		Fn: &FunctionShape{
 			Params:     params,
-			Returns:    []*Type{shape},
+			Returns:    []*Type{instance},
 			TypeParams: ast.TypeParamNames(s.TypeParams),
 			TypeBounds: c.typeBounds(s.TypeParams),
 			Struct:     &StructCtor{Name: s.Name.Name, Shape: shape.Table},

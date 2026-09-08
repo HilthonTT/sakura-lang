@@ -53,10 +53,12 @@ func (e *emitter) statement(stmt ast.Statement, opts Options) Doc {
 		return e.typeAlias(s, opts)
 	case *ast.EnumStatement:
 		return e.enumStmt(s, opts)
-	case *ast.StructStatement:
-		return e.structStmt(s, opts)
 	case *ast.LocalDestructureStatement:
 		return e.localDestructure(s, opts)
+	case *ast.ImplStatement:
+		return e.implStmt(s, opts)
+	case *ast.StructStatement:
+		return e.structStmt(s, opts)
 	}
 	return text(stmt.String())
 }
@@ -295,20 +297,6 @@ func (e *emitter) typeParamList(params []ast.TypeParam, opts Options) Doc {
 	return concat(text("<"), join(text(", "), parts...), text(">"))
 }
 
-func (e *emitter) structStmt(s *ast.StructStatement, opts Options) Doc {
-	if s.Name == nil {
-		return text(s.String())
-	}
-	fields := make([]Doc, len(s.Fields))
-	for i, f := range s.Fields {
-		fields[i] = concat(text(f.Name), text(": "), e.typeNode(f.Type, opts))
-	}
-	return concat(
-		text("struct "), text(s.Name.Name), e.typeParamList(s.TypeParams, opts), text(" {"),
-		nest(opts.indent(), concat(hardLine(), join(concat(text(","), hardLine()), fields...), text(","))),
-		hardLine(), text("}"))
-}
-
 func (e *emitter) localDestructure(s *ast.LocalDestructureStatement, opts Options) Doc {
 	open, closer := "{", "}"
 	if s.IsArray {
@@ -336,6 +324,40 @@ func (e *emitter) localDestructure(s *ast.LocalDestructureStatement, opts Option
 	head := concat(text("local "), text(open), text(" "),
 		join(text(", "), parts...), text(" "), text(closer))
 	return e.assignTail(head, []ast.Expression{s.Value}, opts)
+}
+
+func (e *emitter) implStmt(s *ast.ImplStatement, opts Options) Doc {
+	if s.Target == nil {
+		return text(s.String())
+	}
+	var body []Doc
+	for i, m := range s.Members {
+		if i > 0 {
+			body = append(body, hardLine())
+		}
+		body = append(body,
+			hardLine(),
+			text("function "), text(m.Name), e.funcSig(m.Func, opts),
+			e.funcBody(m.Func, opts))
+	}
+	return concat(
+		text("impl "), text(s.Target.Name),
+		nest(opts.indent(), concat(body...)),
+		hardLine(), text("end"))
+}
+
+func (e *emitter) structStmt(s *ast.StructStatement, opts Options) Doc {
+	if s.Name == nil {
+		return text(s.String())
+	}
+	fields := make([]Doc, len(s.Fields))
+	for i, f := range s.Fields {
+		fields[i] = concat(text(f.Name), text(": "), e.typeNode(f.Type, opts))
+	}
+	return concat(
+		text("struct "), text(s.Name.Name), e.typeParamList(s.TypeParams, opts), text(" {"),
+		nest(opts.indent(), concat(hardLine(), join(concat(text(","), hardLine()), fields...), text(","))),
+		hardLine(), text("}"))
 }
 
 func (e *emitter) enumStmt(s *ast.EnumStatement, opts Options) Doc {

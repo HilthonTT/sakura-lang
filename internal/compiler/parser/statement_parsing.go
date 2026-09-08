@@ -63,6 +63,10 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseInterfaceStatement()
 	}
 
+	if p.curTokenIs(token.Ident) && p.curToken.Literal == "impl" && p.peekTokenIs(token.Ident) {
+		return p.parseImplStatement()
+	}
+
 	if p.curTokenIs(token.Ident) && p.curToken.Literal == "continue" && !p.peekStartsSuffix() {
 		return p.parseContinueStatement()
 	}

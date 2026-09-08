@@ -20,6 +20,8 @@ func (c *checker) walkStatement(s ast.Statement) {
 		c.walkLocalStatement(n)
 	case *ast.LocalDestructureStatement:
 		c.walkLocalDestructure(n)
+	case *ast.ImplStatement:
+		c.walkImplStatement(n)
 	case *ast.LocalFunctionStatement:
 		c.walkLocalFunctionStatement(n)
 	case *ast.FunctionDeclaration:
@@ -166,6 +168,29 @@ func (c *checker) destructuredFieldType(s *ast.LocalDestructureStatement, source
 	c.errf(s.Line(), "missing-field",
 		"type %q has no field %q", source.String(), b.Key)
 	return anyT
+}
+
+func (c *checker) walkImplStatement(s *ast.ImplStatement) {
+	if s.Target == nil {
+		return
+	}
+	if _, ok := c.env.lookup(s.Target.Name); !ok && !c.opts.REPL {
+		c.errf(s.Line(), "unknown-impl-target",
+			"impl target %q is not defined", s.Target.Name)
+	}
+	selfT := anyT
+	if a, ok := c.env.aliases[s.Target.Name]; ok && a != nil {
+		selfT = a
+	}
+	for _, m := range s.Members {
+		shape := c.functionShapeFromExpr(m.Func)
+		c.env.push()
+		if len(m.Func.Params) > 0 && m.Func.Params[0].Name.Name == "self" && m.Func.Params[0].Type == nil {
+			shape.Fn.Params[0] = selfT
+		}
+		c.walkFunctionBody(m.Func, shape.Fn)
+		c.env.pop()
+	}
 }
 
 func (c *checker) walkLocalFunctionStatement(s *ast.LocalFunctionStatement) {

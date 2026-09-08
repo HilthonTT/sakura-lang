@@ -93,9 +93,9 @@ of extra statements. Several extensions are desugared in the parser and
 have no dedicated bytecode: compound assignment, backtick string
 interpolation, and match.
 
-type, struct, interface and continue are contextual keywords — they still work as
-ordinary identifiers where no such statement can start. match, enum,
-defer, try, catch and throw are hard keywords.`,
+type, struct, interface, impl and continue are contextual keywords — they
+still work as ordinary identifiers where no such statement can start.
+match, enum, defer, try, catch and throw are hard keywords.`,
 		SeeAlso: []string{"_G"},
 		Entries: []Entry{
 			{Name: "local", Kind: EntryKeyword, Signature: "local x [, y] = expr [, expr]",
@@ -111,6 +111,15 @@ each name against the source table's type, so a field the type does not
 declare is a compile error. See examples/60_destructuring.lsc.`},
 			{Name: "spread", Kind: EntryKeyword, Signature: "{ ...a, ...b, extra }",
 				Summary: "Merges other tables into a table constructor. Array entries are appended in order and named keys are copied, with later entries winning. See examples/60_destructuring.lsc."},
+			{Name: "impl", Kind: EntryKeyword, Signature: "impl Name <function members> end",
+				Summary: "Attaches functions to an existing name — usually a struct.",
+				Detail: `Each function m(...) end inside the block lowers to Name.m = function(...) end.
+A struct's constructor is a callable class table and its instances index
+through it, so a member whose first parameter is self is reachable as
+instance:m() and one without is reachable as Name.m(). The checker adds
+every member to the struct's type, types an unannotated self as the
+struct, and rejects an unknown static. A contextual keyword. See
+examples/62_impl.lsc.`},
 			{Name: "interface", Kind: EntryKeyword, Signature: "interface Name { field: T }",
 				Summary: "Declares a named structural type. Equivalent to a type alias whose target is a table, kept as its own form so the formatter round-trips it, and intended for use as a generic constraint. A contextual keyword. See examples/61_generic_constraints.lsc."},
 			{Name: "function", Kind: EntryKeyword, Signature: "function f(a: T, b: T = default): R ... end",
@@ -158,7 +167,7 @@ is unaffected. See examples/44_match.lsc.`},
 			{Name: "struct", Kind: EntryKeyword, Signature: "struct Name x: number, y: number end",
 				Summary: "Declares a struct type and its constructor. A contextual keyword. See examples/42_structs.lsc."},
 			{Name: "type", Kind: EntryKeyword, Signature: "type Name = T  |  type Box<T> = { value: T }",
-				Summary: "Declares a type alias, optionally generic. A contextual keyword. Aliases may be primitives, literals, unions, intersections, optionals, function types or structural tables."},
+				Summary: "Declares a type alias, optionally generic. A contextual keyword. Aliases may be primitives, literals, unions, optionals, function types or structural tables."},
 			{Name: "generic constraints", Kind: EntryKeyword, Signature: "function f<T: Named>(x: T): T ... end",
 				Summary: "Bounds a type parameter by another type.",
 				Detail: `A constrained parameter is checked at every use: an explicit type

@@ -5,6 +5,7 @@ import (
 
 	"github.com/hilthontt/luascript/internal/compiler/ast"
 )
+
 func TestParseNamedDestructure(t *testing.T) {
 	ds := parseExpect1(t, "local { host, port } = cfg").(*ast.LocalDestructureStatement)
 	if ds.IsArray {
@@ -17,6 +18,7 @@ func TestParseNamedDestructure(t *testing.T) {
 		t.Errorf("bind 0 = %+v, want key/bind host", ds.Binds[0])
 	}
 }
+
 func TestParseDestructureRenameDefaultAndRest(t *testing.T) {
 	ds := parseExpect1(t, "local { host = h, timeout or 30, ...others } = cfg").(*ast.LocalDestructureStatement)
 	if len(ds.Binds) != 3 {
@@ -32,6 +34,7 @@ func TestParseDestructureRenameDefaultAndRest(t *testing.T) {
 		t.Errorf("rest = %+v, want ...others", ds.Binds[2])
 	}
 }
+
 func TestParsePositionalDestructure(t *testing.T) {
 	ds := parseExpect1(t, "local [ a, b, ...tail ] = list").(*ast.LocalDestructureStatement)
 	if !ds.IsArray {
@@ -44,6 +47,7 @@ func TestParsePositionalDestructure(t *testing.T) {
 		t.Errorf("rest = %+v, want index 3", ds.Binds[2])
 	}
 }
+
 func TestParseDestructureErrors(t *testing.T) {
 	cases := []string{
 		"local { ...rest, a } = t",
@@ -55,6 +59,7 @@ func TestParseDestructureErrors(t *testing.T) {
 		parseError(t, src)
 	}
 }
+
 func TestParseTableSpread(t *testing.T) {
 	ls := parseExpect1(t, "local m = { ...a, x = 1, ...b }").(*ast.LocalStatement)
 	tc := ls.Values[0].(*ast.TableConstructor)
@@ -63,6 +68,7 @@ func TestParseTableSpread(t *testing.T) {
 			tc.Fields[0].IsSpread, tc.Fields[1].IsSpread, tc.Fields[2].IsSpread)
 	}
 }
+
 func TestParseVarargInTableIsNotSpread(t *testing.T) {
 	ls := parseExpect1(t, "local m = { ... }").(*ast.LocalStatement)
 	tc := ls.Values[0].(*ast.TableConstructor)
@@ -70,6 +76,7 @@ func TestParseVarargInTableIsNotSpread(t *testing.T) {
 		t.Errorf("`{ ... }` parsed as a spread, want a vararg expansion")
 	}
 }
+
 func TestParseOptionalChain(t *testing.T) {
 	ls := parseExpect1(t, "local v = a?.b.c").(*ast.LocalStatement)
 	outer := ls.Values[0].(*ast.IndexExpression)
@@ -81,6 +88,7 @@ func TestParseOptionalChain(t *testing.T) {
 		t.Errorf("inner link not marked optional")
 	}
 }
+
 func TestParseOptionalBracketAndMethod(t *testing.T) {
 	ls := parseExpect1(t, "local v = a?[k]").(*ast.LocalStatement)
 	if ix := ls.Values[0].(*ast.IndexExpression); !ix.Optional || ix.IsDot {
@@ -91,18 +99,21 @@ func TestParseOptionalBracketAndMethod(t *testing.T) {
 		t.Errorf("method form = %+v, want optional call to m", mc)
 	}
 }
+
 func TestParseCoalesce(t *testing.T) {
 	ls := parseExpect1(t, "local v = a ?? b").(*ast.LocalStatement)
 	if be, ok := ls.Values[0].(*ast.BinaryExpression); !ok || be.Op != "??" {
 		t.Errorf("value = %s, want a ?? b", ls.Values[0].String())
 	}
 }
+
 func TestParseCoalesceBindsTighterThanOr(t *testing.T) {
 	ls := parseExpect1(t, "local v = a ?? b or c").(*ast.LocalStatement)
 	if got := ls.Values[0].String(); got != "((a ?? b) or c)" {
 		t.Errorf("value = %s, want ((a ?? b) or c)", got)
 	}
 }
+
 func TestParsePipeline(t *testing.T) {
 	cases := map[string]string{
 		"local v = x |> f":       "f(x)",
@@ -120,9 +131,37 @@ func TestParsePipeline(t *testing.T) {
 		}
 	}
 }
+
 func TestParsePipelineRejectsNonCallable(t *testing.T) {
 	parseError(t, "local v = x |> 42")
 }
+
+func TestParseImplStatement(t *testing.T) {
+	is := parseExpect1(t, "impl Point function m(self) end function n() end end").(*ast.ImplStatement)
+	if is.Target.Name != "Point" {
+		t.Errorf("target = %q, want Point", is.Target.Name)
+	}
+	if len(is.Members) != 2 || is.Members[0].Name != "m" || is.Members[1].Name != "n" {
+		t.Errorf("members = %+v, want m and n", is.Members)
+	}
+}
+
+func TestParseImplErrors(t *testing.T) {
+	cases := []string{
+		"impl Point end",
+		"impl Point local x = 1 end",
+		"impl Point function m() end function m() end end",
+		"impl Point function m() end",
+	}
+	for _, src := range cases {
+		parseError(t, src)
+	}
+}
+
+func TestImplIsContextual(t *testing.T) {
+	parse(t, "local impl = 1 impl = impl + 1")
+}
+
 func TestParseInterfaceStatement(t *testing.T) {
 	ta := parseExpect1(t, "interface Named { name: string }").(*ast.TypeAliasStatement)
 	if !ta.IsInterface || ta.Name != "Named" {
@@ -132,9 +171,11 @@ func TestParseInterfaceStatement(t *testing.T) {
 		t.Errorf("target = %T, want *ast.TypeTable", ta.Target)
 	}
 }
+
 func TestInterfaceIsContextual(t *testing.T) {
 	parse(t, "local interface = 1 print(interface)")
 }
+
 func TestParseTypeParamConstraint(t *testing.T) {
 	lf := parseExpect1(t, "local function f<T: Named, U>(x: T): T return x end").(*ast.LocalFunctionStatement)
 	if len(lf.Func.TypeParams) != 2 {
@@ -147,6 +188,7 @@ func TestParseTypeParamConstraint(t *testing.T) {
 		t.Errorf("second param is constrained, want unconstrained")
 	}
 }
+
 func TestParseIntersectionType(t *testing.T) {
 	ta := parseExpect1(t, "type Both = A & B").(*ast.TypeAliasStatement)
 	if _, ok := ta.Target.(*ast.TypeIntersection); !ok {
@@ -156,6 +198,7 @@ func TestParseIntersectionType(t *testing.T) {
 		t.Errorf("target = %q, want A & B", got)
 	}
 }
+
 func TestIntersectionBindsTighterThanUnion(t *testing.T) {
 	ta := parseExpect1(t, "type T = A & B | C").(*ast.TypeAliasStatement)
 	if got := ta.Target.String(); got != "A & B | C" {

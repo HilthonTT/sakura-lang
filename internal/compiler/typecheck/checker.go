@@ -6,6 +6,7 @@ import (
 
 type Options struct {
 	Strict bool
+	REPL   bool
 }
 
 func Check(prog *ast.Program, opts Options) []TypeError {
@@ -14,6 +15,7 @@ func Check(prog *ast.Program, opts Options) []TypeError {
 		opts:         opts,
 		taggedEnums:  map[string][]string{},
 		classicEnums: map[string][]string{},
+		implMembers:  map[string]map[string]*Type{},
 	}
 	c.installGlobals()
 	if prog == nil || prog.Block == nil {
@@ -40,6 +42,10 @@ type checker struct {
 
 	taggedEnums  map[string][]string
 	classicEnums map[string][]string
+
+	implMembers map[string]map[string]*Type
+
+	silent bool
 
 	assignedSomewhere map[string]bool
 	upvalMutated      map[string]bool

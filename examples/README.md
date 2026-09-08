@@ -53,6 +53,7 @@ A few need a little more:
 | `45_generics.lsc` | generics — parametric functions with inference (`map`/`filter`), `Box<T>`, a `Stack<T>` |
 | `46_generics.lsc` | generics, continued — deeper inference and instantiation cases |
 | `61_generic_constraints.lsc` | `interface Name { ... }`, bounded type parameters (`<T: Named>`), and `A & B` intersection types |
+| `62_impl.lsc` | `impl Name ... end` — methods and statics on a struct, and namespaces on a plain table |
 
 ## Modules and imports
 

@@ -10,6 +10,7 @@ const (
 	restArrayGlobal  = "__rest_array"
 	restRecordGlobal = "__rest_record"
 )
+
 func hasOptionalLink(e ast.Expression) bool {
 	for {
 		switch n := e.(type) {
@@ -30,11 +31,13 @@ func hasOptionalLink(e ast.Expression) bool {
 		}
 	}
 }
+
 func (g *Generator) compileOptionalChain(is *InstructionSet, e ast.Expression) {
 	end := &anchor{}
 	g.compileChainLink(is, e, end)
 	end.line = is.count
 }
+
 func (g *Generator) compileChainLink(is *InstructionSet, e ast.Expression, end *anchor) {
 	switch n := e.(type) {
 	case *ast.IndexExpression:
@@ -85,6 +88,7 @@ func (g *Generator) compileChainLink(is *InstructionSet, e ast.Expression, end *
 		g.compileExpression(is, e)
 	}
 }
+
 func (g *Generator) compileChainSpine(is *InstructionSet, e ast.Expression, end *anchor) {
 	switch e.(type) {
 	case *ast.IndexExpression, *ast.MethodCallExpression, *ast.CallExpression:
@@ -93,10 +97,12 @@ func (g *Generator) compileChainSpine(is *InstructionSet, e ast.Expression, end 
 		g.compileExpression(is, e)
 	}
 }
+
 func (g *Generator) emitNilGuard(is *InstructionSet, line int, end *anchor) {
 	jn := is.define(JumpIfNil, line, end)
 	g.current.recordPending(jn)
 }
+
 func (g *Generator) compileCoalesce(is *InstructionSet, e *ast.BinaryExpression) {
 	g.compileExpression(is, e.Left)
 	useRight := &anchor{}
@@ -110,6 +116,7 @@ func (g *Generator) compileCoalesce(is *InstructionSet, e *ast.BinaryExpression)
 	g.compileExpression(is, e.Right)
 	end.line = is.count
 }
+
 func tableHasSpread(t *ast.TableConstructor) bool {
 	for _, f := range t.Fields {
 		if f.IsSpread {
@@ -118,6 +125,7 @@ func tableHasSpread(t *ast.TableConstructor) bool {
 	}
 	return false
 }
+
 func (g *Generator) compileSpreadTable(is *InstructionSet, t *ast.TableConstructor) {
 	line := t.Line()
 	is.define(NewTable, line, len(t.Fields), 0)
@@ -147,12 +155,14 @@ func (g *Generator) compileSpreadTable(is *InstructionSet, t *ast.TableConstruct
 	}
 	is.define(GetLocal, line, slot)
 }
+
 func (g *Generator) emitMergeCall(is *InstructionSet, line int, global string, slot int, value ast.Expression) {
 	is.define(GetGlobal, line, global)
 	is.define(GetLocal, line, slot)
 	g.compileExpression(is, value)
 	is.define(Call, line, 2, 0)
 }
+
 func (g *Generator) compileLocalDestructure(is *InstructionSet, s *ast.LocalDestructureStatement) {
 	line := s.Line()
 	g.emitValue(is, s.Value)
@@ -191,6 +201,7 @@ func (g *Generator) compileLocalDestructure(is *InstructionSet, s *ast.LocalDest
 		is.define(SetLocal, line, g.current.locals.define(b.Bind))
 	}
 }
+
 func (g *Generator) emitKeyList(is *InstructionSet, line int, binds []ast.DestructureBind) {
 	is.define(NewTable, line, len(binds), 0)
 	idx := int64(0)
@@ -205,6 +216,7 @@ func (g *Generator) emitKeyList(is *InstructionSet, line int, binds []ast.Destru
 		is.define(SetTable, line)
 	}
 }
+
 func (g *Generator) emitNilDefault(is *InstructionSet, line int, def ast.Expression) {
 	useDefault := &anchor{}
 	jn := is.define(JumpIfNil, line, useDefault)
@@ -216,4 +228,15 @@ func (g *Generator) emitNilDefault(is *InstructionSet, line int, def ast.Express
 	is.define(Pop, line, 1)
 	g.compileExpression(is, def)
 	end.line = is.count
+}
+
+func (g *Generator) compileImplStatement(is *InstructionSet, s *ast.ImplStatement) {
+	if s.Target == nil {
+		return
+	}
+	for _, m := range s.Members {
+		g.compileLoadName(is, s.Target.Name, s.Line())
+		g.compileNamedFunction(is, m.Func, s.Target.Name+"."+m.Name)
+		is.define(SetField, s.Line(), m.Name)
+	}
 }

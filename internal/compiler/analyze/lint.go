@@ -103,6 +103,13 @@ func (p lintPass) lintStmt(s ast.Statement, sc *scope, rep *Report) {
 		for _, b := range n.Binds {
 			p.defineLocal(sc, b.Bind, n.Line(), rep)
 		}
+	case *ast.ImplStatement:
+		if n.Target != nil {
+			markName(n.Target.Name, sc)
+		}
+		for _, m := range n.Members {
+			p.lintFunc(m.Func, sc, rep)
+		}
 	case *ast.LocalFunctionStatement:
 		p.defineLocal(sc, n.Name, n.Line(), rep)
 		p.lintFunc(n.Func, sc, rep)

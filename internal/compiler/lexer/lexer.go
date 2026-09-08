@@ -401,10 +401,13 @@ func (l *Lexer) readString(ch rune) (lit, raw string, terminated bool) {
 	var b strings.Builder
 	for l.ch != ch {
 		if l.ch == 0 {
-			return b.String(), string(l.input[bodyStart:l.position]), false
+			return b.String(), l.sliceFrom(bodyStart), false
 		}
 		if l.ch == '\\' {
 			l.readChar()
+			if l.ch == 0 {
+				return b.String(), l.sliceFrom(bodyStart), false
+			}
 			l.readEscape(&b)
 			continue
 		}
@@ -540,6 +543,14 @@ func (l *Lexer) makeToken(t token.Type, lit string, line int) token.Token {
 	tok := token.Token{Type: t, Literal: lit, Line: line, Column: l.tokenCol}
 	l.readChar()
 	return tok
+}
+
+func (l *Lexer) sliceFrom(start int) string {
+	end := min(l.position, len(l.input))
+	if start > end {
+		return ""
+	}
+	return string(l.input[start:end])
 }
 
 func (l *Lexer) readChar() {

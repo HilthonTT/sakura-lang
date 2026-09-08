@@ -1,0 +1,82 @@
+-- Three small operators for working with values that may be absent, and one
+-- for reading calls left to right.
+--
+--   a?.b  a?[k]  a?:m()   optional access — nil instead of an error
+--   a ?? b                nil-coalescing — b only when a is nil
+--   x |> f                pipeline — f(x)
+
+local response = {
+    body = {
+        user = {
+            name = "Ada",
+            greet = function(self) return "hi, " .. self.name end,
+        },
+    },
+}
+
+print("=== optional access ===")
+
+print("present        :", response?.body?.user?.name)
+
+-- The short-circuit covers the whole chain, not just the one link: when
+-- `missing` is nil the trailing `.user.name` is never evaluated.
+print("absent         :", response?.missing?.user?.name)
+
+local nothing = nil
+print("nil receiver   :", nothing?.body?.user?.name)
+
+-- The bracket and method forms work the same way.
+print("bracket        :", response?["body"]?["user"]?["name"])
+print("method         :", response?.body?.user?:greet())
+print("method on nil  :", nothing?.body?:greet())
+print()
+
+print("=== nil-coalescing ===")
+
+-- `??` differs from `or` in exactly one place: false is a real value.
+print("nil ?? default :", nil ?? "default")
+print("false ?? d     :", false ?? "default")
+print("false or d     :", false or "default")
+print("value ?? d     :", 42 ?? "default")
+
+-- The two pair naturally: reach in optionally, then supply a fallback.
+local name = response?.missing?.user?.name ?? "anonymous"
+print("combined       :", name)
+print()
+
+print("=== pipeline ===")
+
+local function double(n: number): number
+    return n * 2
+end
+
+local function add(a: number, b: number): number
+    return a + b
+end
+
+-- `x |> f` is `f(x)`; `x |> f(extra)` inserts x as the *first* argument.
+print("5 |> double    :", 5 |> double)
+print("5 |> add(3)    :", 5 |> add(3))
+print("chained        :", 5 |> double |> double |> add(1))
+
+-- Any callable works, including a field or a method.
+print("string.upper   :", "abc" |> string.upper)
+
+-- Pipelines are lower-precedence than every other operator, so the left
+-- side is fully evaluated first: this is double(2 + 3).
+print("2 + 3 |> double:", 2 + 3 |> double)
+print()
+
+print("=== typed use ===")
+
+-- An optional access widens the result type with nil, which the checker
+-- then makes you handle — here by coalescing it away.
+type Profile = { nickname: string? }
+
+local function display(p: Profile?): string
+    return p?.nickname ?? "guest"
+end
+
+print("display(nil)   :", display(nil))
+print("display({})    :", display({}))
+print("display(named) :", display({ nickname = "ada" }))

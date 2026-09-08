@@ -10,6 +10,106 @@ const (
 	restArrayGlobal  = "__rest_array"
 	restRecordGlobal = "__rest_record"
 )
+func hasOptionalLink(e ast.Expression) bool {
+	for {
+		switch n := e.(type) {
+		case *ast.IndexExpression:
+			if n.Optional {
+				return true
+			}
+			e = n.Object
+		case *ast.MethodCallExpression:
+			if n.Optional {
+				return true
+			}
+			e = n.Object
+		case *ast.CallExpression:
+			e = n.Func
+		default:
+			return false
+		}
+	}
+}
+func (g *Generator) compileOptionalChain(is *InstructionSet, e ast.Expression) {
+	end := &anchor{}
+	g.compileChainLink(is, e, end)
+	end.line = is.count
+}
+func (g *Generator) compileChainLink(is *InstructionSet, e ast.Expression, end *anchor) {
+	switch n := e.(type) {
+	case *ast.IndexExpression:
+		g.compileChainSpine(is, n.Object, end)
+		if n.Optional {
+			g.emitNilGuard(is, n.Line(), end)
+		}
+		if n.IsDot {
+			if s, ok := n.Index.(*ast.StringLiteral); ok {
+				is.define(GetField, n.Line(), s.Value)
+				return
+			}
+		}
+		g.compileExpression(is, n.Index)
+		is.define(GetTable, n.Line())
+
+	case *ast.MethodCallExpression:
+		g.compileChainSpine(is, n.Object, end)
+		if n.Optional {
+			g.emitNilGuard(is, n.Line(), end)
+		}
+		variadic := len(n.Args) > 0 && isMultiValue(n.Args[len(n.Args)-1])
+		if variadic {
+			is.define(MarkArgs, n.Line())
+		}
+		is.define(Self, n.Line(), n.Method)
+		g.compileCallArgs(is, n.Args, n.Line())
+		if variadic {
+			is.define(Call, n.Line(), -1, 1)
+			return
+		}
+		is.define(Call, n.Line(), len(n.Args)+1, 1)
+
+	case *ast.CallExpression:
+		g.compileChainSpine(is, n.Func, end)
+		variadic := len(n.Args) > 0 && isMultiValue(n.Args[len(n.Args)-1])
+		if variadic {
+			is.define(MarkArgs, n.Line())
+		}
+		g.compileCallArgs(is, n.Args, n.Line())
+		nargs := len(n.Args)
+		if variadic {
+			nargs = -1
+		}
+		is.define(Call, n.Line(), nargs, 1)
+
+	default:
+		g.compileExpression(is, e)
+	}
+}
+func (g *Generator) compileChainSpine(is *InstructionSet, e ast.Expression, end *anchor) {
+	switch e.(type) {
+	case *ast.IndexExpression, *ast.MethodCallExpression, *ast.CallExpression:
+		g.compileChainLink(is, e, end)
+	default:
+		g.compileExpression(is, e)
+	}
+}
+func (g *Generator) emitNilGuard(is *InstructionSet, line int, end *anchor) {
+	jn := is.define(JumpIfNil, line, end)
+	g.current.recordPending(jn)
+}
+func (g *Generator) compileCoalesce(is *InstructionSet, e *ast.BinaryExpression) {
+	g.compileExpression(is, e.Left)
+	useRight := &anchor{}
+	jn := is.define(JumpIfNil, e.Line(), useRight)
+	g.current.recordPending(jn)
+	end := &anchor{}
+	j := is.define(Jump, e.Line(), end)
+	g.current.recordPending(j)
+	useRight.line = is.count
+	is.define(Pop, e.Line(), 1)
+	g.compileExpression(is, e.Right)
+	end.line = is.count
+}
 func tableHasSpread(t *ast.TableConstructor) bool {
 	for _, f := range t.Fields {
 		if f.IsSpread {

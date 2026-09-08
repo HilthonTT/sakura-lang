@@ -135,9 +135,32 @@ func (p *Parser) parseAssignmentStatement(tok token.Token, first ast.Expression)
 }
 
 func isAssignTarget(e ast.Expression) bool {
-	switch e.(type) {
-	case *ast.Identifier, *ast.IndexExpression:
+	switch n := e.(type) {
+	case *ast.Identifier:
 		return true
+	case *ast.IndexExpression:
+		return !hasOptionalAccess(n)
 	}
 	return false
+}
+
+func hasOptionalAccess(e ast.Expression) bool {
+	for {
+		switch n := e.(type) {
+		case *ast.IndexExpression:
+			if n.Optional {
+				return true
+			}
+			e = n.Object
+		case *ast.MethodCallExpression:
+			if n.Optional {
+				return true
+			}
+			e = n.Object
+		case *ast.CallExpression:
+			e = n.Func
+		default:
+			return false
+		}
+	}
 }

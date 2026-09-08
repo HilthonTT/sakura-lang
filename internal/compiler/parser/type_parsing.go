@@ -96,10 +96,13 @@ func (p *Parser) parseTypeAtom() ast.TypeNode {
 		return nil
 	}
 
-	for p.curTokenIs(token.Question) {
+	for p.curTokenIs(token.Question) || p.curTokenIs(token.Coalesce) {
 		tok := p.curToken
 		p.nextToken()
 		t = &ast.TypeOptional{BaseNode: baseAt(tok), Inner: t}
+		if tok.Type == token.Coalesce {
+			t = &ast.TypeOptional{BaseNode: baseAt(tok), Inner: t}
+		}
 	}
 	return t
 }

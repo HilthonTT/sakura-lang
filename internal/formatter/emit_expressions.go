@@ -105,12 +105,16 @@ func (e *emitter) binaryChain(x ast.Expression, op string, opts Options) []Doc {
 }
 
 func (e *emitter) index(ix *ast.IndexExpression, opts Options) Doc {
+	q := ""
+	if ix.Optional {
+		q = "?"
+	}
 	if ix.IsDot {
 		if s, ok := ix.Index.(*ast.StringLiteral); ok {
-			return concat(e.expr(ix.Object, opts), text("."), text(s.Value))
+			return concat(e.expr(ix.Object, opts), text(q+"."), text(s.Value))
 		}
 	}
-	return concat(e.expr(ix.Object, opts), text("["), e.expr(ix.Index, opts), text("]"))
+	return concat(e.expr(ix.Object, opts), text(q+"["), e.expr(ix.Index, opts), text("]"))
 }
 
 func (e *emitter) call(c *ast.CallExpression, opts Options) Doc {
@@ -120,7 +124,11 @@ func (e *emitter) call(c *ast.CallExpression, opts Options) Doc {
 
 func (e *emitter) methodCall(m *ast.MethodCallExpression, opts Options) Doc {
 	args := e.callArgs(m.Args, opts)
-	return concat(e.expr(m.Object, opts), text(":"), text(m.Method), args)
+	sep := ":"
+	if m.Optional {
+		sep = "?:"
+	}
+	return concat(e.expr(m.Object, opts), text(sep), text(m.Method), args)
 }
 
 func (e *emitter) callArgs(args []ast.Expression, opts Options) Doc {

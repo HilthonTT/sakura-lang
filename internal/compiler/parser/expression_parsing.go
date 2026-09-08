@@ -23,6 +23,14 @@ func (p *Parser) parseExpressionPrec(minPrec int) ast.Expression {
 		return nil
 	}
 	for {
+		if precedence.Call > minPrec && p.curTokenIs(token.Question) &&
+			(p.peekTokenIs(token.LBracket) || p.peekTokenIs(token.Colon)) {
+			left = p.parseOptionalSuffix(left)
+			if left == nil {
+				return nil
+			}
+			continue
+		}
 		if precedence.Call > minPrec && (p.curTokenIs(token.LBrace) || p.curTokenIs(token.String) || p.curTokenIs(token.InterpString)) {
 			left = p.parseCallWithSingleArg(left)
 			continue
@@ -100,13 +108,53 @@ func (p *Parser) parseInfix(left ast.Expression, opPrec int) ast.Expression {
 	case token.LBracket:
 		return p.parseIndexBracket(left)
 	case token.Dot:
-		return p.parseIndexDot(left)
+		return p.parseIndexDot(left, false)
+	case token.QuestionDot:
+		return p.parseIndexDot(left, true)
 	case token.Colon:
-		return p.parseMethodCall(left)
+		return p.parseMethodCall(left, false)
 	case token.Label:
 		return p.parseTypeAssertion(left)
+	case token.PipeArrow:
+		return p.parsePipeline(left, opPrec)
 	}
 	return p.parseBinaryExpression(left, opPrec)
+}
+
+func (p *Parser) parseOptionalSuffix(left ast.Expression) ast.Expression {
+	p.nextToken()
+	if p.curTokenIs(token.LBracket) {
+		idx := p.parseIndexBracket(left)
+		if idx == nil {
+			return nil
+		}
+		idx.(*ast.IndexExpression).Optional = true
+		return idx
+	}
+	return p.parseMethodCall(left, true)
+}
+
+func (p *Parser) parsePipeline(left ast.Expression, _ int) ast.Expression {
+	tok := p.curToken
+	p.nextToken()
+	right := p.parseExpressionPrec(precedence.Pow)
+	if right == nil {
+		return nil
+	}
+	switch r := right.(type) {
+	case *ast.CallExpression:
+		r.Args = append([]ast.Expression{left}, r.Args...)
+		return r
+	case *ast.MethodCallExpression:
+		r.Args = append([]ast.Expression{left}, r.Args...)
+		return r
+	case *ast.Identifier, *ast.IndexExpression, *ast.ParenExpression:
+		return &ast.CallExpression{BaseNode: baseAt(tok), Func: right, Args: []ast.Expression{left}}
+	}
+	p.errorAt(tok, errors.SyntaxError, "pipeline",
+		"the right side of '|>' must be a function or a call, got "+right.String(),
+		"write `value |> f`, `value |> f(extra)`, or `value |> obj:method(extra)`")
+	return nil
 }
 
 func (p *Parser) parseTypeAssertion(left ast.Expression) ast.Expression {
@@ -272,6 +320,8 @@ func binaryOpString(t token.Type) string {
 		return "and"
 	case token.Or:
 		return "or"
+	case token.Coalesce:
+		return "??"
 	}
 	return ""
 }
@@ -321,7 +371,7 @@ func (p *Parser) parseIndexBracket(obj ast.Expression) ast.Expression {
 	}
 }
 
-func (p *Parser) parseIndexDot(obj ast.Expression) ast.Expression {
+func (p *Parser) parseIndexDot(obj ast.Expression, optional bool) ast.Expression {
 	tok := p.curToken
 	p.nextToken()
 	if !p.curTokenIsFieldName() {
@@ -338,6 +388,7 @@ func (p *Parser) parseIndexDot(obj ast.Expression) ast.Expression {
 		Object:   obj,
 		Index:    &ast.StringLiteral{BaseNode: baseAt(nameTok), Value: name},
 		IsDot:    true,
+		Optional: optional,
 	}
 }
 
@@ -345,7 +396,7 @@ func (p *Parser) curTokenIsFieldName() bool {
 	return p.curTokenIs(token.Ident) || p.curTokenIs(token.Match)
 }
 
-func (p *Parser) parseMethodCall(obj ast.Expression) ast.Expression {
+func (p *Parser) parseMethodCall(obj ast.Expression, optional bool) ast.Expression {
 	tok := p.curToken
 	p.nextToken()
 	if !p.curTokenIsFieldName() {
@@ -388,6 +439,7 @@ func (p *Parser) parseMethodCall(obj ast.Expression) ast.Expression {
 		Object:   obj,
 		Method:   method,
 		Args:     args,
+		Optional: optional,
 	}
 }
 

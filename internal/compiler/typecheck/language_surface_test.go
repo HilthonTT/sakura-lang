@@ -46,6 +46,34 @@ func TestSpreadRejectsNonTable(t *testing.T) {
 		local t = { ...n }`,
 		"cannot spread")
 }
+func TestOptionalAccessAddsNil(t *testing.T) {
+	expectErrContains(t, `
+		local t: { a: number } = { a = 1 }
+		local n: number = t?.a`,
+		"could not be converted")
+}
+func TestOptionalAccessCoalescedIsNotOptional(t *testing.T) {
+	expectOK(t, `
+		local t: { a: number } = { a = 1 }
+		local n: number = t?.a ?? 0`)
+}
+func TestCoalesceKeepsRightWhenLeftIsNil(t *testing.T) {
+	expectOK(t, `
+		local a: string? = nil
+		local s: string = a ?? "fallback"`)
+}
+func TestCoalesceUnionsBothSides(t *testing.T) {
+	expectErrContains(t, `
+		local a: string? = nil
+		local s: string = a ?? 1`,
+		"could not be converted")
+}
+func TestPipelineChecksArguments(t *testing.T) {
+	expectErrContains(t, `
+		local function f(n: number): number return n end
+		local r = "s" |> f`,
+		"could not be converted")
+}
 func TestTypeParamConstraintRejectsBadArgument(t *testing.T) {
 	expectErrContains(t, `
 		interface Named { name: string }

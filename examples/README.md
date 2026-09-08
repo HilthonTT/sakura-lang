@@ -37,6 +37,7 @@ A few need a little more:
 | `52_attributes.lsc` | `<const>` / `<close>` and what the always-on `constcheck` pass rejects |
 | `55_try_catch.lsc` | `try` / `catch` / `throw` — a real protected region, not a `pcall` desugar |
 | `60_destructuring.lsc` | `local { a, b } = t` / `local [ x, y ] = t`, renames, defaults, rest bindings, and `{ ...a, ...b }` spread |
+| `63_optional_chaining.lsc` | `a?.b` / `a?[k]` / `a?:m()`, the `??` nil-coalescing operator, and the `\|>` pipeline |
 
 ## Types
 

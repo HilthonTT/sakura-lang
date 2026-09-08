@@ -96,7 +96,14 @@ func (c *checker) typeOfTableConstructor(t *ast.TableConstructor) *Type {
 }
 
 func (c *checker) typeOfIndex(e *ast.IndexExpression) *Type {
-	base := boundOf(c.typeOfExpression(e.Object))
+	base := c.typeOfExpression(e.Object)
+	if e.Optional {
+		if base.Kind == KindNil {
+			return nilT
+		}
+		base = removeKind(base, KindNil)
+	}
+	base = boundOf(base)
 	if base.Kind == KindAny {
 		return anyT
 	}
@@ -108,20 +115,27 @@ func (c *checker) typeOfIndex(e *ast.IndexExpression) *Type {
 	if name, ok := staticIndexName(e); ok {
 		for _, f := range base.Table.Fields {
 			if f.Key == name {
-				return f.Type
+				return c.optionalResult(e, f.Type)
 			}
 		}
 		if base.Table.Indexer != nil && assignable(stringT, base.Table.Indexer.Key) {
-			return base.Table.Indexer.Value
+			return c.optionalResult(e, base.Table.Indexer.Value)
 		}
 		c.errf(e.Line(), "missing-field",
 			"type %q has no field %q", base.String(), name)
 		return anyT
 	}
 	if base.Table.Indexer != nil {
-		return base.Table.Indexer.Value
+		return c.optionalResult(e, base.Table.Indexer.Value)
 	}
 	return anyT
+}
+
+func (c *checker) optionalResult(e *ast.IndexExpression, t *Type) *Type {
+	if !e.Optional {
+		return t
+	}
+	return Optional(t)
 }
 
 func staticIndexName(e *ast.IndexExpression) (string, bool) {
@@ -296,6 +310,8 @@ func (c *checker) typeOfBinary(e *ast.BinaryExpression) *Type {
 
 	var right *Type
 	switch e.Op {
+	case "??":
+		right = c.typeOfExpression(e.Right)
 	case "and":
 		c.env.push()
 		c.applyRefinement(c.refine(e.Left, true))
@@ -311,6 +327,12 @@ func (c *checker) typeOfBinary(e *ast.BinaryExpression) *Type {
 	}
 
 	switch e.Op {
+	case "??":
+		lhs := removeKind(left, KindNil)
+		if lhs.Kind == KindNever {
+			return right
+		}
+		return NewUnion(lhs, right)
 	case "+", "-", "*", "/", "//", "%", "^", "&", "|", "~", "<<", ">>":
 		c.requireNumber(e.Line(), left, right)
 		if left.Kind == KindAny || right.Kind == KindAny {

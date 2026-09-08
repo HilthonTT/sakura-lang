@@ -100,3 +100,75 @@ func TestSpreadDoesNotMutateSource(t *testing.T) {
 	assertGlobal(t, v, "srcLen", int64(2))
 	assertGlobal(t, v, "copyLen", int64(3))
 }
+func TestOptionalChainShortCircuitsWholeChain(t *testing.T) {
+	v := runScript(t, `
+		local t = { inner = { value = 42 } }
+		present = t?.inner?.value
+		absent = t?.missing?.value
+		none = nil
+		fromNil = none?.inner?.value
+		bracket = t?["inner"]?["value"]`)
+	assertGlobal(t, v, "present", int64(42))
+	assertGlobal(t, v, "absent", nil)
+	assertGlobal(t, v, "fromNil", nil)
+	assertGlobal(t, v, "bracket", int64(42))
+}
+func TestOptionalMethodCall(t *testing.T) {
+	v := runScript(t, `
+		local o = { n = 5, get = function(self) return self.n end }
+		hit = o?:get()
+		local none = nil
+		miss = none?:get()`)
+	assertGlobal(t, v, "hit", int64(5))
+	assertGlobal(t, v, "miss", nil)
+}
+func TestOptionalChainEvaluatesReceiverOnce(t *testing.T) {
+	v := runScript(t, `
+		calls = 0
+		local function source()
+			calls = calls + 1
+			return { a = { b = 1 } }
+		end
+		value = source()?.a?.b`)
+	assertGlobal(t, v, "calls", int64(1))
+	assertGlobal(t, v, "value", int64(1))
+}
+func TestCoalesceDistinguishesNilFromFalse(t *testing.T) {
+	v := runScript(t, `
+		fromNil = nil ?? "d"
+		fromFalse = false ?? "d"
+		fromValue = 42 ?? "d"
+		fromOr = false or "d"`)
+	assertGlobal(t, v, "fromNil", "d")
+	assertGlobal(t, v, "fromFalse", false)
+	assertGlobal(t, v, "fromValue", int64(42))
+	assertGlobal(t, v, "fromOr", "d")
+}
+func TestCoalesceSkipsRightWhenLeftPresent(t *testing.T) {
+	v := runScript(t, `
+		calls = 0
+		local function side()
+			calls = calls + 1
+			return 0
+		end
+		r = 1 ?? side()`)
+	assertGlobal(t, v, "calls", int64(0))
+	assertGlobal(t, v, "r", int64(1))
+}
+func TestPipeline(t *testing.T) {
+	v := runScript(t, `
+		local function double(n) return n * 2 end
+		local function add(a, b) return a + b end
+		local obj = { base = 10, plus = function(self, n) return self.base + n end }
+
+		a = 5 |> double
+		b = 5 |> add(3)
+		c = 5 |> double |> double
+		d = 1 |> obj:plus()
+		e = 2 + 3 |> double`)
+	assertGlobal(t, v, "a", int64(10))
+	assertGlobal(t, v, "b", int64(8))
+	assertGlobal(t, v, "c", int64(20))
+	assertGlobal(t, v, "d", int64(11))
+	assertGlobal(t, v, "e", int64(10))
+}

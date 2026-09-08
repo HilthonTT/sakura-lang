@@ -70,6 +70,59 @@ func TestParseVarargInTableIsNotSpread(t *testing.T) {
 		t.Errorf("`{ ... }` parsed as a spread, want a vararg expansion")
 	}
 }
+func TestParseOptionalChain(t *testing.T) {
+	ls := parseExpect1(t, "local v = a?.b.c").(*ast.LocalStatement)
+	outer := ls.Values[0].(*ast.IndexExpression)
+	if outer.Optional {
+		t.Errorf("outer link marked optional, want plain")
+	}
+	inner := outer.Object.(*ast.IndexExpression)
+	if !inner.Optional {
+		t.Errorf("inner link not marked optional")
+	}
+}
+func TestParseOptionalBracketAndMethod(t *testing.T) {
+	ls := parseExpect1(t, "local v = a?[k]").(*ast.LocalStatement)
+	if ix := ls.Values[0].(*ast.IndexExpression); !ix.Optional || ix.IsDot {
+		t.Errorf("bracket form = %+v, want optional non-dot", ix)
+	}
+	ls = parseExpect1(t, "local v = a?:m(1)").(*ast.LocalStatement)
+	if mc := ls.Values[0].(*ast.MethodCallExpression); !mc.Optional || mc.Method != "m" {
+		t.Errorf("method form = %+v, want optional call to m", mc)
+	}
+}
+func TestParseCoalesce(t *testing.T) {
+	ls := parseExpect1(t, "local v = a ?? b").(*ast.LocalStatement)
+	if be, ok := ls.Values[0].(*ast.BinaryExpression); !ok || be.Op != "??" {
+		t.Errorf("value = %s, want a ?? b", ls.Values[0].String())
+	}
+}
+func TestParseCoalesceBindsTighterThanOr(t *testing.T) {
+	ls := parseExpect1(t, "local v = a ?? b or c").(*ast.LocalStatement)
+	if got := ls.Values[0].String(); got != "((a ?? b) or c)" {
+		t.Errorf("value = %s, want ((a ?? b) or c)", got)
+	}
+}
+func TestParsePipeline(t *testing.T) {
+	cases := map[string]string{
+		"local v = x |> f":       "f(x)",
+		"local v = x |> f(1)":    "f(x, 1)",
+		"local v = x |> o:m(1)":  "o:m(x, 1)",
+		"local v = x |> f |> g":  "g(f(x))",
+		"local v = a + b |> f":   "f((a + b))",
+		"local v = x |> f or y":  "(f(x) or y)",
+		"local v = x |> a.b.c()": "a.b.c(x)",
+	}
+	for src, want := range cases {
+		ls := parseExpect1(t, src).(*ast.LocalStatement)
+		if got := ls.Values[0].String(); got != want {
+			t.Errorf("%q = %s, want %s", src, got, want)
+		}
+	}
+}
+func TestParsePipelineRejectsNonCallable(t *testing.T) {
+	parseError(t, "local v = x |> 42")
+}
 func TestParseInterfaceStatement(t *testing.T) {
 	ta := parseExpect1(t, "interface Named { name: string }").(*ast.TypeAliasStatement)
 	if !ta.IsInterface || ta.Name != "Named" {

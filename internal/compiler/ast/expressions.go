@@ -191,9 +191,10 @@ func (tc *TableConstructor) String() string {
 
 type IndexExpression struct {
 	BaseNode
-	Object Expression
-	Index  Expression
-	IsDot  bool
+	Object   Expression
+	Index    Expression
+	IsDot    bool
+	Optional bool
 }
 
 func (*IndexExpression) expressionNode()         {}
@@ -203,10 +204,16 @@ func (ie *IndexExpression) String() string {
 	out.WriteString(ie.Object.String())
 	if ie.IsDot {
 		if s, ok := ie.Index.(*StringLiteral); ok {
+			if ie.Optional {
+				out.WriteString("?")
+			}
 			out.WriteString(".")
 			out.WriteString(s.Value)
 			return out.String()
 		}
+	}
+	if ie.Optional {
+		out.WriteString("?")
 	}
 	out.WriteString("[")
 	out.WriteString(ie.Index.String())
@@ -233,9 +240,10 @@ func (ce *CallExpression) String() string {
 
 type MethodCallExpression struct {
 	BaseNode
-	Object Expression
-	Method string
-	Args   []Expression
+	Object   Expression
+	Method   string
+	Args     []Expression
+	Optional bool
 }
 
 func (*MethodCallExpression) expressionNode()         {}
@@ -243,6 +251,9 @@ func (mc *MethodCallExpression) TokenLiteral() string { return mc.Token.Literal 
 func (mc *MethodCallExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString(mc.Object.String())
+	if mc.Optional {
+		out.WriteString("?")
+	}
 	out.WriteString(":")
 	out.WriteString(mc.Method)
 	out.WriteString("(")

@@ -186,6 +186,19 @@ to keep the singleton. See examples/05_types.lsc.`},
 				Summary: "Short-circuit conjunction: returns a when a is falsy, otherwise b. The typechecker narrows across it."},
 			{Name: "or", Kind: EntryKeyword, Signature: "a or b",
 				Summary: "Short-circuit disjunction: returns a when a is truthy, otherwise b. `x or default` drops nil from the result type."},
+			{Name: "??", Kind: EntryKeyword, Signature: "a ?? b",
+				Summary: "Nil-coalescing: returns a unless a is nil, in which case b. Unlike or it does not fall through on false. Binds tighter than or, looser than and."},
+			{Name: "?.", Kind: EntryKeyword, Signature: "a?.b  |  a?[k]  |  a?:m()",
+				Summary: "Optional (nil-safe) access.",
+				Detail: `When the receiver is nil the whole enclosing access chain short-circuits
+to nil instead of raising, so a?.b.c is nil when a is nil. The result
+type gains nil. See examples/63_optional_chaining.lsc.`},
+			{Name: "|>", Kind: EntryKeyword, Signature: "value |> f  |  value |> f(extra)  |  value |> obj:m(extra)",
+				Summary: "Pipeline: inserts the left operand as the first argument of the call on the right.",
+				Detail: `Desugared in the parser, so x |> f(1) is exactly f(x, 1) by the time any
+later stage sees it — including the formatter, which prints the call
+form. Left-associative and lower-precedence than every other operator, so
+a + b |> f is f(a + b). See examples/63_optional_chaining.lsc.`},
 			{Name: "not", Kind: EntryKeyword, Signature: "not a",
 				Summary: "Logical negation; yields a boolean. Propagates type narrowing to the negated branch."},
 			{Name: "nil", Kind: EntryConstant, Signature: "nil",

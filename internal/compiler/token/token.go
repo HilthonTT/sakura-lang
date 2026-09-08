@@ -56,8 +56,11 @@ const (
 
 	Assign Type = "="
 
-	Question Type = "?"
-	Arrow    Type = "->"
+	Question    Type = "?"
+	QuestionDot Type = "?."
+	Coalesce    Type = "??"
+	Arrow       Type = "->"
+	PipeArrow   Type = "|>"
 
 	And Type = "AND"
 	Or  Type = "OR"
@@ -170,7 +173,10 @@ var operators = map[string]Type{
 	">>=": RShiftAssign,
 
 	"?":  Question,
+	"?.": QuestionDot,
+	"??": Coalesce,
 	"->": Arrow,
+	"|>": PipeArrow,
 }
 
 var separators = map[string]Type{

@@ -103,6 +103,10 @@ func (l *Lexer) nextToken() token.Token {
 			l.readChar()
 			return l.makeToken(token.BorAssign, "|=", line)
 		}
+		if l.peekChar() == '>' {
+			l.readChar()
+			return l.makeToken(token.PipeArrow, "|>", line)
+		}
 		return l.singleToken(token.Pipe, "|")
 	case '~':
 		if l.peekChar() == '=' {
@@ -164,6 +168,14 @@ func (l *Lexer) nextToken() token.Token {
 		}
 		return l.singleToken(token.Colon, ":")
 	case '?':
+		if l.peekChar() == '.' {
+			l.readChar()
+			return l.makeToken(token.QuestionDot, "?.", line)
+		}
+		if l.peekChar() == '?' {
+			l.readChar()
+			return l.makeToken(token.Coalesce, "??", line)
+		}
 		return l.singleToken(token.Question, "?")
 	case ',':
 		return l.singleToken(token.Comma, ",")

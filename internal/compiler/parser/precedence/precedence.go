@@ -4,7 +4,9 @@ import "github.com/hilthontt/luascript/internal/compiler/token"
 
 const (
 	Lowest = iota
+	Pipeline
 	Or
+	Coalesce
 	And
 	Compare
 	BitOr
@@ -20,6 +22,9 @@ const (
 )
 
 var LookupTable = map[token.Type]int{
+	token.PipeArrow: Pipeline,
+	token.Coalesce:  Coalesce,
+
 	token.Or:  Or,
 	token.And: And,
 
@@ -47,10 +52,11 @@ var LookupTable = map[token.Type]int{
 
 	token.Caret: Pow,
 
-	token.Dot:      Call,
-	token.LBracket: Call,
-	token.LParen:   Call,
-	token.Colon:    Call,
+	token.Dot:         Call,
+	token.QuestionDot: Call,
+	token.LBracket:    Call,
+	token.LParen:      Call,
+	token.Colon:       Call,
 
 	token.Label: Call,
 }

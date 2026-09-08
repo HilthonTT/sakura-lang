@@ -35,10 +35,22 @@ func (g *Generator) compileExpression(is *InstructionSet, exp ast.Expression) {
 	case *ast.TableConstructor:
 		g.compileTableConstructor(is, e)
 	case *ast.IndexExpression:
+		if hasOptionalLink(e) {
+			g.compileOptionalChain(is, e)
+			return
+		}
 		g.compileIndexLoad(is, e)
 	case *ast.CallExpression:
+		if hasOptionalLink(e) {
+			g.compileOptionalChain(is, e)
+			return
+		}
 		g.compileCall(is, e, 1)
 	case *ast.MethodCallExpression:
+		if hasOptionalLink(e) {
+			g.compileOptionalChain(is, e)
+			return
+		}
 		g.compileMethodCall(is, e, 1)
 	case *ast.BinaryExpression:
 		g.compileBinary(is, e)
@@ -57,6 +69,13 @@ func (g *Generator) compileExpression(is *InstructionSet, exp ast.Expression) {
 
 func (g *Generator) compileExpressionMulti(is *InstructionSet, exp ast.Expression, nresults int) {
 	if exp == nil {
+		return
+	}
+	if hasOptionalLink(exp) {
+		g.compileOptionalChain(is, exp)
+		if nresults > 1 {
+			is.define(LoadNil, exp.Line(), nresults-1)
+		}
 		return
 	}
 	switch e := exp.(type) {
@@ -279,6 +298,9 @@ func (g *Generator) compileTableConstructor(is *InstructionSet, t *ast.TableCons
 
 func (g *Generator) compileBinary(is *InstructionSet, e *ast.BinaryExpression) {
 	switch e.Op {
+	case "??":
+		g.compileCoalesce(is, e)
+		return
 	case "and":
 		g.compileExpression(is, e.Left)
 		end := &anchor{}
